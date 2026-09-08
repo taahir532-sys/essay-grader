@@ -1,47 +1,53 @@
 import streamlit as st
 from groq import Groq
 
-st.set_page_config(page_title="TEFL Grader - Durban")
-st.title("📄 TEFL AI Essay Grader - Durban Edition")
-st.write("Paste student essay -> Get CEFR level, score, and fixes in 5 seconds")
+st.set_page_config(page_title="TEFL Grader Pro", page_icon="🎓", layout="centered")
 
-# --- This part now works BOTH locally and online ---
-try:
-    api_key = st.secrets["GROQ_API_KEY"]
-except:
-    api_key = ""
+st.markdown("""
+<style>
+.stButton>button {background:#111;color:white;border-radius:10px;height:45px;font-weight:bold;width:100%;}
+</style>
+""", unsafe_allow_html=True)
 
-if not api_key:
-    api_key = st.text_input("Enter your Groq API Key (gsk_...)", type="password")
+# --- PAYWALL COUNTER ---
+if "uses" not in st.session_state:
+    st.session_state.uses = 0
 
-if not api_key:
-    st.stop()
+st.title("🎓 TEFL Essay Grader Pro")
+st.caption("CEFR grading in 5 seconds • Built for TEFL teachers")
 
-client = Groq(api_key=api_key)
+essay = st.text_area("Paste Student Essay:", height=200, placeholder="I go to market yesterday...")
+level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"])
 
-essay = st.text_area("Student essay:", height=200)
+if st.button("GRADE ESSAY →"):
+    # Paywall: 1 free grade only
+    if st.session_state.uses >= 1:
+        st.error("🔒 Free limit reached!")
+        st.info("You used your 1 free grade. Unlock unlimited for R49/mo or get PDF correction for R30.")
+        st.stop()
 
-if st.button("Grade Essay"):
     if not essay.strip():
-        st.warning("Please paste an essay first")
-    else:
+        st.warning("Paste an essay first")
+        st.stop()
+
+    try:
+        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
         with st.spinner("Grading..."):
-            prompt = f"""You are a TEFL teacher in Durban. Grade this essay:
+            prompt = f"You are a Cambridge TEFL examiner for {level}. Grade: {essay}. Return CEFR, Score/10, 2 Strengths, table Mistake|Correction|Why"
+            res = client.chat.completions.create(model="llama-3.3-70b-versatile", messages=[{"role":"user","content":prompt}])
+            st.session_state.uses += 1
+            st.success(f"Free grades left: {1 - st.session_state.uses}")
+            st.markdown(res.choices[0].message.content)
+    except Exception as e:
+        st.error(f"Error: {e}")
 
-Essay: {essay}
+# --- MONEY BUTTONS ---
+st.markdown("---")
+st.markdown("### 🔓 Need more?")
+col1, col2 = st.columns(2)
+with col1:
+    st.link_button("💬 R30 Full PDF on WhatsApp", "https://wa.me/27658006750?text=Hi!%20I%20want%20full%20correction%20for%20R30")
+with col2:
+    st.link_button("🚀 R49 Unlimited Monthly", "https://wa.me/27658006750?text=Hi!%20I%20want%20unlimited%20access%20for%20R49")
 
-Give:
-1. CEFR Level (A1-C2)
-2. Score /10
-3. 3 strengths
-4. 3 fixes with examples
-5. Corrected version
-
-Be concise and helpful."""
-
-            response = client.chat.completions.create(
-                model="openai/gpt-oss-20b",
-                messages=[{"role": "user", "content": prompt}]
-            )
-            st.success("Graded!")
-            st.markdown(response.choices[0].message.content)
+st.caption("Built by mr_mahomed • Day 1 of 6-Month AI Engineer Journey")
