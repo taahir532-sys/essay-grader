@@ -43,11 +43,8 @@ if st.button("GRADE ESSAY →"):
 
 # --- MONEY BUTTONS ---
 st.markdown("---")
-st.markdown("### 🔓 Need more?")
-col1, col2 = st.columns(2)
-with col1:
-    st.link_button("💬 R30 Full PDF on WhatsApp", "https://wa.me/27658006750?text=Hi!%20I%20want%20full%20correction%20for%20R30")
-with col2:
-    st.link_button("🚀 R49 Unlimited Monthly", "https://wa.me/27658006750?text=Hi!%20I%20want%20unlimited%20access%20for%20R49")
+st.markdown("### ❤️ Need more? Get Full Detailed Correction")
+st.markdown("Pay **R30** via **Payshap to 0658006750 (Absa)** then click below"    
+st.link_button("I Paid R30 - Send Essay on WhatsApp", "https://wa.me/27658006750?text=Hi!%20paid%20R30")
 
-st.caption("Built by mr_mahomed • Day 1 of 6-Month AI Engineer Journey")
+st.caption("TEFL Grader Pro • Cambridge CEFR Standard • Durban, SA")
