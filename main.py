@@ -47,4 +47,4 @@ st.markdown("### ❤️ Need more? Get Full Detailed Correction")
 st.markdown("Pay **R30** via **Payshap to 0658006750 ** then click below")    
 st.link_button("I Paid R30 - Send Essay on WhatsApp", "https://wa.me/27658006750?text=Hi!%20paid%20R30")
 
-st.caption("TEFL Grader Pro • Cambridge CEFR Standard • Durban, SA")
+st.caption("TEFL Grader Pro • Cambridge CEFR Standard • Durban, SA • Built by Mr Taahir Mahomed")
