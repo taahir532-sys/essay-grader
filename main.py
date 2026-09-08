@@ -34,7 +34,7 @@ if st.button("GRADE ESSAY →"):
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
         with st.spinner("Grading..."):
             prompt = f"You are a Cambridge TEFL examiner for {level}. Grade: {essay}. Return CEFR, Score/10, 2 Strengths, table Mistake|Correction|Why"
-            res = client.chat.completions.create(model="llama-3.1-8b-instant", messages=[{"role":"user","content":prompt}])
+            res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
             st.session_state.uses += 1
             st.success(f"Free grades left: {1 - st.session_state.uses}")
             st.markdown(res.choices[0].message.content)
