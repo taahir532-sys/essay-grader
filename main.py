@@ -5,6 +5,8 @@ from fpdf import FPDF
 import unicodedata
 import pandas as pd
 
+YOUR_EMAIL = "taahir532@gmail.com"
+
 st.set_page_config(page_title="TEFLMate v4 Pro", page_icon="📝", layout="centered")
 
 st.markdown("""
@@ -17,8 +19,6 @@ if "uses" not in st.session_state:
     st.session_state.uses = 0
 if "pro_expiry" not in st.session_state:
     st.session_state.pro_expiry = None
-if "last_pdf" not in st.session_state:
-    st.session_state.last_pdf = None
 
 def is_pro():
     if st.session_state.pro_expiry is None:
@@ -40,16 +40,13 @@ with st.sidebar:
     st.info(get_status())
 
     st.markdown("#### 💰 Fair SA Pricing")
-    st.markdown("""
-FREE: 3 essays
-
-Once-off: R10 = +10 grades
-Weekly: R49 = 7 days unlimited
-Monthly: R99 = 30 days unlimited + Batch 50
-Yearly: R799 = 365 days
-
-Loved it? Send payment proof on WhatsApp and I'll send your code instantly ❤️
-""")
+    st.markdown("- FREE: 3 essays")
+    st.markdown("- Once-off: **R10** = +10 grades")
+    st.markdown("- Weekly: **R49** = 7 days unlimited")
+    st.markdown("- Monthly: **R99** = 30 days + Batch 50")
+    st.markdown("- Yearly: **R799** = 365 days")
+    st.markdown("")
+    st.caption("Loved it? Send proof and I'll send your code instantly ❤️")
 
     code = st.text_input("Got a code?", placeholder="Paste your code here", type="password").strip().upper()
 
@@ -68,11 +65,13 @@ Loved it? Send payment proof on WhatsApp and I'll send your code instantly ❤�
             st.success(f"Unlocked {label}!")
             st.rerun()
         else:
-            st.error("Hmm that code didn't work. Please WhatsApp me your proof and I'll help.")
+            st.error("That code didn't work — send me your proof and I'll help.")
 
     st.divider()
-    st.link_button("Pay on Beacons", "https://beacons.ai/mr_mahomed")
+    st.link_button("💳 Pay on Beacons", "https://beacons.ai/mr_mahomed")
     st.caption("Payshap: 0658006750")
+    st.markdown("**Prefer not to WhatsApp?**")
+    st.link_button(f"📧 Email proof to {YOUR_EMAIL}", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof&body=Hi, I paid for TEFLMate. Here is my proof:")
 
 with st.expander("📘 CEFR Levels A1-C2", expanded=False):
     st.markdown("A1 Beginner, A2 Elementary, B1 Intermediate, B2 Upper, C1 Advanced, C2 Mastery")
@@ -137,7 +136,7 @@ with tab1:
     level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level")
     if st.button("GRADE ESSAY ->", key="single_btn"):
         if not is_pro() and st.session_state.uses >= 3:
-            st.error("You've used your 3 free grades. R10 gives you +10 more — WhatsApp me!")
+            st.error("You've used 3 free grades. R10 = +10 more — email or WhatsApp me!")
             st.stop()
         if not essay.strip():
             st.warning("Paste an essay first")
@@ -150,7 +149,6 @@ with tab1:
                 st.success(get_status())
                 st.markdown(result_text)
                 pdf_bytes = create_branded_pdf(essay, result_text, level)
-                st.session_state.last_pdf = pdf_bytes
                 st.download_button("📄 Download Branded PDF", pdf_bytes, file_name=f"Report_{level}.pdf", mime="application/pdf")
         except Exception as e:
             st.error(f"Error: {e}")
@@ -161,7 +159,7 @@ with tab2:
     uploaded = st.file_uploader("Upload file", type=["csv","txt"])
     if st.button("GRADE BATCH 50 ->", key="batch_btn"):
         if not is_pro():
-            st.error("Batch needs Monthly PRO (R99). WhatsApp for code.")
+            st.error("Batch needs Monthly PRO (R99). Email or WhatsApp for code.")
             st.stop()
         if not uploaded:
             st.warning("Upload file first")
@@ -200,6 +198,11 @@ with tab2:
             st.error(f"Batch Error: {e}")
 
 st.divider()
-st.markdown("### ❤️ Payshap 0658006750 | WhatsApp me your proof and I'll send your code right away")
-st.link_button("WhatsApp Proof + Get Code", "https://wa.me/27658006750?text=Hi%20I%20paid%20for%20TEFLMate")
+st.markdown("### ❤️ Payshap 0658006750 | Send proof by WhatsApp or Email and I'll send your code")
+col1, col2 = st.columns(2)
+with col1:
+    st.link_button("💬 WhatsApp Proof", "https://wa.me/27658006750?text=Hi%20I%20paid%20for%20TEFLMate")
+with col2:
+    st.link_button("📧 Email Proof", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
+
 st.caption("TEFLMate v4 • Durban, SA • Built by Mr Taahir Mahomed")
