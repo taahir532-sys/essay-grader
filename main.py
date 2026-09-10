@@ -4,6 +4,15 @@ from datetime import datetime, timedelta
 from fpdf import FPDF
 import unicodedata
 import pandas as pd
+import base64
+from PIL import Image
+import io
+
+# For PDF handling
+try:
+    import fitz # PyMuPDF
+except ImportError:
+    fitz = None
 
 YOUR_EMAIL = "taahir532@gmail.com"
 
@@ -32,24 +41,65 @@ def get_status():
     else:
         return f"FREE - {3 - st.session_state.uses} left"
 
+def clean(text):
+    if not text:
+        return ""
+    return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
+
+def extract_text_from_image(image_bytes):
+    try:
+        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+        b64 = base64.b64encode(image_bytes).decode('utf-8')
+        res = client.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "You are an OCR. Extract the handwritten or printed essay text EXACTLY as written, including spelling mistakes. Do not correct. Return only essay text."},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                ]
+            }]
+        )
+        return res.choices[0].message.content
+    except Exception as e:
+        return f"OCR_ERROR: {e}"
+
+def extract_text_from_pdf(pdf_bytes):
+    text = ""
+    # Try direct text extraction first
+    if fitz:
+        try:
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            for page in doc[:3]: # first 3 pages max
+                text += page.get_text() + "\n"
+            # If PDF is scanned (no text), OCR first page as image
+            if len(text.strip()) < 30 and len(doc) > 0:
+                pix = doc[0].get_pixmap(dpi=200)
+                img_bytes = pix.tobytes("jpeg")
+                text = extract_text_from_image(img_bytes)
+        except Exception as e:
+            text = f"PDF_ERROR: {e}"
+    else:
+        text = "PDF library missing - add PyMuPDF to requirements.txt"
+    return text
+
 st.title("📝 TEFLMate v4 - Batch Grader")
 st.caption("Grade 50 essays in 4 minutes • Fair Price SA")
 
-# NEW HOW TO USE SECTION
 with st.expander("📘 How to Use & Choose Target Level (Read This)", expanded=True):
     st.markdown("### 3 Steps to Grade:")
-    st.markdown("1. **Paste** student essay")
-    st.markdown("2. **Pick Target Level** = the level you WANT them to reach")
-    st.markdown("3. **Click GRADE** = get score, mistakes table + corrected version + PDF")
+    st.markdown("1. **Paste** text OR **Photo/PDF** of homework")
+    st.markdown("2. **Pick Target Level** = level you WANT them to reach")
+    st.markdown("3. **Click GRADE** = score + mistakes table + corrected + PDF")
     st.divider()
     st.markdown("### 🎯 Which Target Level to Pick?")
-    st.markdown("- **A1 Beginner**: Grade 1-3, new learners. Simple sentences, present tense only.")
-    st.markdown("- **A2 Elementary**: Grade 4-6. Basic past tense, short paragraphs.")
-    st.markdown("- **B1 Intermediate**: Grade 7-9 / High School. 4 paragraphs, linking words (because, however).")
-    st.markdown("- **B2 Upper**: Matric / College / IELTS 5.5-6.5. Clear structure, complex sentences.")
-    st.markdown("- **C1 Advanced**: University / IELTS 7+. Academic vocab, fewer grammar errors.")
-    st.markdown("- **C2 Mastery**: Teacher / IELTS 8+. Near-native, professional.")
-    st.info("💡 **Pro Tip:** The grade ADAPTS to your target. If you pick B2 but essay is A2, it will score low (e.g., 4/10) and show exactly what to fix to REACH B2. Always pick the level you are teaching TOWARDS, not the level they are at now.")
+    st.markdown("- **A1 Beginner**: Grade 1-3, simple sentences.")
+    st.markdown("- **A2 Elementary**: Grade 4-6. Basic past tense.")
+    st.markdown("- **B1 Intermediate**: Grade 7-9. 4 paragraphs, linking words.")
+    st.markdown("- **B2 Upper**: Matric / College / IELTS 5.5-6.5.")
+    st.markdown("- **C1 Advanced**: University / IELTS 7+.")
+    st.markdown("- **C2 Mastery**: Teacher / IELTS 8+.")
+    st.info("💡 **New!** 📸 Photo = handwritten book | 📄 PDF = WhatsApp homework scans. App reads handwriting automatically.")
 
 with st.sidebar:
     st.markdown("### 🔑 Your Plan")
@@ -83,12 +133,7 @@ with st.sidebar:
     st.link_button("💳 Pay on Beacons", "https://beacons.ai/mr_mahomed")
     st.caption("Payshap: 0658006750")
     st.markdown("**Prefer not to WhatsApp?**")
-    st.link_button(f"📧 Email proof to {YOUR_EMAIL}", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof&body=Hi, I paid for TEFLMate. Here is my proof:")
-
-def clean(text):
-    if not text:
-        return ""
-    return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
+    st.link_button(f"📧 Email proof to {YOUR_EMAIL}", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
 
 def create_branded_pdf(original_essay, ai_result, target_level):
     pdf = FPDF()
@@ -138,10 +183,10 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
-tab1, tab2 = st.tabs(["Single Essay", "Batch 50 (PRO)"])
+tab1, tab2, tab3 = st.tabs(["Single Essay", "Batch 50 (PRO)", "📸 Photo / PDF NEW"])
 
 with tab1:
-    essay = st.text_area("Paste Student Essay:", height=180, placeholder="I go to market yesterday...")
+    essay = st.text_area("Paste Student Essay:", height=180, placeholder="I go to market yesterday...", key="single_essay")
     level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level")
     if st.button("GRADE ESSAY ->", key="single_btn"):
         if not is_pro() and st.session_state.uses >= 3:
@@ -165,7 +210,7 @@ with tab1:
 with tab2:
     st.markdown("Upload CSV with column `essay` or TXT 1 per line. PRO only.")
     level_b = st.selectbox("Target Level for batch:", ["A1","A2","B1","B2","C1","C2"], key="batch_level")
-    uploaded = st.file_uploader("Upload file", type=["csv","txt"])
+    uploaded = st.file_uploader("Upload file", type=["csv","txt"], key="batch_file")
     if st.button("GRADE BATCH 50 ->", key="batch_btn"):
         if not is_pro():
             st.error("Batch needs Monthly PRO (R99). Email or WhatsApp for code.")
@@ -203,6 +248,80 @@ with tab2:
             st.download_button("📄 Download All 50 Reports PDF", batch_pdf, file_name="Batch_50_Reports.pdf", mime="application/pdf")
         except Exception as e:
             st.error(f"Batch Error: {e}")
+
+with tab3:
+    st.markdown("### 📸 Photo or PDF Scan")
+    st.caption("Take photo of handwritten book or upload PDF from WhatsApp")
+    level_p = st.selectbox("Target Level for photo/PDF:", ["A1","A2","B1","B2","C1","C2"], key="photo_level")
+
+    colA, colB = st.columns(2)
+    with colA:
+        camera_pic = st.camera_input("Take photo")
+        upload_img = st.file_uploader("Upload Image", type=["jpg","jpeg","png"], key="img_up")
+    with colB:
+        upload_pdf = st.file_uploader("Upload PDF Scan", type=["pdf"], key="pdf_up")
+        st.caption("PDF can be typed or scanned handwritten")
+
+    extracted_text = None
+    image_bytes = None
+
+    if camera_pic:
+        image_bytes = camera_pic.getvalue()
+        st.image(image_bytes, caption="Camera", use_container_width=True)
+    elif upload_img:
+        image_bytes = upload_img.getvalue()
+        st.image(image_bytes, caption="Image uploaded", use_container_width=True)
+
+    if upload_pdf:
+        st.info("Reading PDF...")
+        pdf_bytes = upload_pdf.getvalue()
+        extracted_text = extract_text_from_pdf(pdf_bytes)
+        st.text_area("Text from PDF (edit if needed):", value=extracted_text, height=150, key="pdf_text_area")
+
+    if image_bytes and not upload_pdf:
+        if st.button("READ & GRADE PHOTO ->", key="photo_btn"):
+            if not is_pro() and st.session_state.uses >= 3:
+                st.error("You've used 3 free grades. R10 = +10 more!")
+                st.stop()
+            with st.spinner("Reading handwriting..."):
+                extracted_text = extract_text_from_image(image_bytes)
+                if "OCR_ERROR" in extracted_text or "ERROR" in extracted_text:
+                    st.error(extracted_text)
+                    st.stop()
+                st.success("Read!")
+                st.session_state['last_ocr'] = extracted_text
+                st.rerun()
+
+    if 'last_ocr' in st.session_state:
+        extracted_text = st.session_state['last_ocr']
+        edited = st.text_area("We read this — edit if needed:", value=extracted_text, height=150, key="ocr_edit")
+        if st.button("GRADE THIS TEXT ->", key="grade_ocr_btn"):
+            if not is_pro() and st.session_state.uses >= 3:
+                st.error("You've used 3 free grades!")
+                st.stop()
+            with st.spinner(f"Grading as {level_p}..."):
+                result_text = grade_with_groq(edited, level_p)
+                if not is_pro():
+                    st.session_state.uses += 1
+                st.success(get_status())
+                st.markdown(result_text)
+                pdf_bytes = create_branded_pdf(edited, result_text, level_p)
+                st.download_button("📄 Download Branded PDF", pdf_bytes, file_name=f"Photo_Report_{level_p}.pdf", mime="application/pdf")
+
+    if upload_pdf and extracted_text:
+        if st.button("GRADE PDF TEXT ->", key="grade_pdf_btn"):
+            if not is_pro() and st.session_state.uses >= 3:
+                st.error("You've used 3 free grades!")
+                st.stop()
+            pdf_edited = st.session_state.get('pdf_text_area', extracted_text)
+            with st.spinner(f"Grading as {level_p}..."):
+                result_text = grade_with_groq(pdf_edited, level_p)
+                if not is_pro():
+                    st.session_state.uses += 1
+                st.success(get_status())
+                st.markdown(result_text)
+                pdf_bytes = create_branded_pdf(pdf_edited, result_text, level_p)
+                st.download_button("📄 Download Branded PDF", pdf_bytes, file_name=f"PDF_Report_{level_p}.pdf", mime="application/pdf")
 
 st.divider()
 st.markdown("### ❤️ Payshap 0658006750 | Send proof by WhatsApp or Email and I'll send your code")
