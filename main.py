@@ -41,15 +41,17 @@ with st.sidebar:
 
     st.markdown("#### 💰 Fair SA Pricing")
     st.markdown("""
-    **FREE: 3 essays**\n
-    **Once-off: R10** = +10 grades\n
-    **Weekly: R49** = 7 days unlimited\n
-    **Monthly: R99** = 30 days unlimited + Batch 50\n
-    **Yearly: R799** = 365 days\n
-    \n*Pay then WhatsApp for code*
-    """)
+FREE: 3 essays
 
-    code = st.text_input("Enter Code after Payshap:", placeholder="Enter code", type="password").strip().upper()
+Once-off: R10 = +10 grades
+Weekly: R49 = 7 days unlimited
+Monthly: R99 = 30 days unlimited + Batch 50
+Yearly: R799 = 365 days
+
+Loved it? Send payment proof on WhatsApp and I'll send your code instantly ❤️
+""")
+
+    code = st.text_input("Got a code?", placeholder="Paste your code here", type="password").strip().upper()
 
     if st.button("Unlock Code"):
         now = datetime.now()
@@ -66,7 +68,7 @@ with st.sidebar:
             st.success(f"Unlocked {label}!")
             st.rerun()
         else:
-            st.error("Invalid code. Pay then WhatsApp proof.")
+            st.error("Hmm that code didn't work. Please WhatsApp me your proof and I'll help.")
 
     st.divider()
     st.link_button("Pay on Beacons", "https://beacons.ai/mr_mahomed")
@@ -135,7 +137,7 @@ with tab1:
     level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level")
     if st.button("GRADE ESSAY ->", key="single_btn"):
         if not is_pro() and st.session_state.uses >= 3:
-            st.error("Free limit 3 reached! Pay R10 for +10 grades.")
+            st.error("You've used your 3 free grades. R10 gives you +10 more — WhatsApp me!")
             st.stop()
         if not essay.strip():
             st.warning("Paste an essay first")
@@ -159,7 +161,7 @@ with tab2:
     uploaded = st.file_uploader("Upload file", type=["csv","txt"])
     if st.button("GRADE BATCH 50 ->", key="batch_btn"):
         if not is_pro():
-            st.error("Batch is PRO only. Pay R99 Monthly.")
+            st.error("Batch needs Monthly PRO (R99). WhatsApp for code.")
             st.stop()
         if not uploaded:
             st.warning("Upload file first")
@@ -198,6 +200,6 @@ with tab2:
             st.error(f"Batch Error: {e}")
 
 st.divider()
-st.markdown("### ❤️ Payshap 0658006750 | WhatsApp proof to get unlock code")
+st.markdown("### ❤️ Payshap 0658006750 | WhatsApp me your proof and I'll send your code right away")
 st.link_button("WhatsApp Proof + Get Code", "https://wa.me/27658006750?text=Hi%20I%20paid%20for%20TEFLMate")
 st.caption("TEFLMate v4 • Durban, SA • Built by Mr Taahir Mahomed")
