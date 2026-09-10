@@ -4,3 +4,4 @@ fpdf2
 pandas
 Pillow
 PyMuPDF
+requests
