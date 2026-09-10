@@ -14,11 +14,6 @@ st.markdown("""
 if "uses" not in st.session_state:
     st.session_state.uses = 0
 
-# TEMP RESET FOR TESTING - DELETE BEFORE LAUNCH
-if st.sidebar.button("Reset Free Grade (Testing)"):
-    st.session_state.uses = 0
-    st.rerun()
-
 st.title("📝 TEFL Essay Grader Pro")
 st.caption("CEFR grading in 5 seconds • Built for TEFL Teachers")
 
@@ -36,7 +31,6 @@ essay = st.text_area("Paste Student Essay:", height=200, placeholder="I go to ma
 level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"])
 
 def clean(text):
-    # Fix for PDF error you saw in photo
     return text.replace('“','"').replace('”','"').replace('’',"'").replace('‘',"'").replace('–','-').replace('—','-').encode('latin-1','ignore').decode('latin-1')
 
 def create_branded_pdf(original_essay, ai_result, target_level):
@@ -106,16 +100,13 @@ if st.button("GRADE ESSAY ->"):
             st.session_state.uses += 1
             st.success(f"Free grades left: {1 - st.session_state.uses}")
             st.markdown(result_text)
-            try:
-                pdf_bytes = create_branded_pdf(essay, result_text, level)
-                st.download_button(
-                    label="📄 Download Branded PDF Report (Send to Student)",
-                    data=pdf_bytes,
-                    file_name=f"Essay_Report_{level}_{datetime.now().strftime('%Y%m%d')}.pdf",
-                    mime="application/pdf"
-                )
-            except Exception as pdf_e:
-                st.error(f"PDF Error: {pdf_e}")
+            pdf_bytes = create_branded_pdf(essay, result_text, level)
+            st.download_button(
+                label="📄 Download Branded PDF Report (Send to Student)",
+                data=pdf_bytes,
+                file_name=f"Essay_Report_{level}_{datetime.now().strftime('%Y%m%d')}.pdf",
+                mime="application/pdf"
+            )
     except Exception as e:
         st.error(f"Error: {e}")
 
