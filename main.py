@@ -5,8 +5,6 @@ from fpdf import FPDF
 import unicodedata
 import pandas as pd
 import base64
-from PIL import Image
-import io
 
 try:
     import fitz
@@ -46,38 +44,33 @@ def clean(text):
     return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
 
 def extract_text_from_image(image_bytes):
-    try:
-        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        b64 = base64.b64encode(image_bytes).decode('utf-8')
-        res = client.chat.completions.create(
-            model="llama-3.2-11b-vision-preview",
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "You are an OCR. Extract the handwritten or printed essay text EXACTLY as written, including spelling mistakes. Do not correct. Return only essay text."},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
-                ]
-            }]
-        )
-        return res.choices[0].message.content
-    except Exception as e:
-        # fallback to 90b if 11b fails
+    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+    b64 = base64.b64encode(image_bytes).decode('utf-8')
+    models_to_try = [
+        "meta-llama/llama-4-scout-17b-16e-instruct",
+        "meta-llama/llama-4-maverick-17b-128e-instruct",
+        "qwen/qwen3-32b",
+        "qwen/qwen3.6-27b",
+        "llava-v1.5-7b-4096-preview"
+    ]
+    last_error = ""
+    for model_id in models_to_try:
         try:
-            client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-            b64 = base64.b64encode(image_bytes).decode('utf-8')
             res = client.chat.completions.create(
-                model="llama-3.2-90b-vision-preview",
+                model=model_id,
                 messages=[{
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": "OCR: Extract text exactly as written."},
+                        {"type": "text", "text": "You are OCR. Extract the handwritten or printed essay text EXACTLY as written, including all spelling mistakes. Do not correct. Return only the essay text."},
                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
                     ]
                 }]
             )
             return res.choices[0].message.content
-        except Exception as e2:
-            return f"OCR_ERROR: {e2}"
+        except Exception as e:
+            last_error = str(e)
+            continue
+    return f"OCR_ERROR: {last_error}"
 
 def extract_text_from_pdf(pdf_bytes):
     text = ""
@@ -100,19 +93,13 @@ st.title("📝 TEFLMate v4 - Batch Grader")
 st.caption("Grade 50 essays in 4 minutes • Fair Price SA")
 
 with st.expander("📘 How to Use & Choose Target Level (Read This)", expanded=True):
-    st.markdown("### 3 Steps to Grade:")
+    st.markdown("### 3 Steps:")
     st.markdown("1. **Paste** text OR **Photo/PDF** of homework")
     st.markdown("2. **Pick Target Level** = level you WANT them to reach")
-    st.markdown("3. **Click GRADE** = score + mistakes table + corrected + PDF")
+    st.markdown("3. **Click GRADE** = score + mistakes + corrected + PDF")
     st.divider()
-    st.markdown("### 🎯 Which Target Level to Pick?")
-    st.markdown("- **A1**: Grade 1-3, simple sentences.")
-    st.markdown("- **A2**: Grade 4-6. Basic past tense.")
-    st.markdown("- **B1**: Grade 7-9. 4 paragraphs.")
-    st.markdown("- **B2**: Matric / College / IELTS 5.5-6.5.")
-    st.markdown("- **C1**: University / IELTS 7+.")
-    st.markdown("- **C2**: Teacher / IELTS 8+.")
-    st.info("📸 Photo = handwritten book | 📄 PDF = WhatsApp scans")
+    st.markdown("**A1** Grade 1-3 simple | **A2** Grade 4-6 basic past | **B1** Grade 7-9 4 paragraphs | **B2** Matric/College IELTS 5.5-6.5 | **C1** University IELTS 7+ | **C2** Teacher IELTS 8+")
+    st.info("📸 Photo = handwritten book | 📄 PDF = WhatsApp scans — now auto-reads!")
 
 with st.sidebar:
     st.markdown("### 🔑 Your Plan")
@@ -124,8 +111,7 @@ with st.sidebar:
     st.markdown("- Monthly: **R99** = 30 days + Batch 50")
     st.markdown("- Yearly: **R799** = 365 days")
     st.markdown("")
-    st.caption("Loved it? Send proof and I'll send your code instantly ❤️")
-    code = st.text_input("Got a code?", placeholder="Paste your code here", type="password").strip().upper()
+    code = st.text_input("Got a code?", placeholder="Paste code", type="password").strip().upper()
     if st.button("Unlock Code"):
         now = datetime.now()
         code_map = {
@@ -141,7 +127,7 @@ with st.sidebar:
             st.success(f"Unlocked {label}!")
             st.rerun()
         else:
-            st.error("That code didn't work — send me your proof and I'll help.")
+            st.error("Code didn't work — send proof and I'll help.")
     st.divider()
     st.link_button("💳 Pay on Beacons", "https://beacons.ai/mr_mahomed")
     st.caption("Payshap: 0658006750")
@@ -198,7 +184,7 @@ def grade_with_groq(essay_text, level):
 tab1, tab2, tab3 = st.tabs(["Single Essay", "Batch 50 (PRO)", "📸 Photo / PDF NEW"])
 
 with tab1:
-    essay = st.text_area("Paste Student Essay:", height=180, placeholder="I go to market yesterday...", key="single_essay")
+    essay = st.text_area("Paste Student Essay:", height=180, placeholder="I go to market yesterday...")
     level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level")
     if st.button("GRADE ESSAY ->", key="single_btn"):
         if not is_pro() and st.session_state.uses >= 3:
@@ -285,8 +271,8 @@ with tab3:
                     st.session_state.uses += 1
                 st.success(get_status())
                 st.markdown(result_text)
-                pdf_bytes = create_branded_pdf(extracted, result_text, level_p)
-                st.download_button("📄 Download PDF", pdf_bytes, file_name=f"PDF_Report_{level_p}.pdf", mime="application/pdf")
+                pdf_bytes_out = create_branded_pdf(extracted, result_text, level_p)
+                st.download_button("📄 Download PDF", pdf_bytes_out, file_name=f"PDF_Report_{level_p}.pdf", mime="application/pdf")
 
     if image_bytes:
         if st.button("READ & GRADE PHOTO ->", key="photo_btn"):
@@ -311,8 +297,8 @@ with tab3:
                     st.session_state.uses += 1
                 st.success(get_status())
                 st.markdown(result_text)
-                pdf_bytes = create_branded_pdf(edited, result_text, level_p)
-                st.download_button("📄 Download PDF", pdf_bytes, file_name=f"Photo_Report_{level_p}.pdf", mime="application/pdf")
+                pdf_bytes_out = create_branded_pdf(edited, result_text, level_p)
+                st.download_button("📄 Download PDF", pdf_bytes_out, file_name=f"Photo_Report_{level_p}.pdf", mime="application/pdf")
 
 st.divider()
 st.markdown("### ❤️ Payshap 0658006750 | Send proof by WhatsApp or Email and I'll send your code")
