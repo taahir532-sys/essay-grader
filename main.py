@@ -35,10 +35,25 @@ def get_status():
 st.title("📝 TEFLMate v4 - Batch Grader")
 st.caption("Grade 50 essays in 4 minutes • Fair Price SA")
 
+# NEW HOW TO USE SECTION
+with st.expander("📘 How to Use & Choose Target Level (Read This)", expanded=True):
+    st.markdown("### 3 Steps to Grade:")
+    st.markdown("1. **Paste** student essay")
+    st.markdown("2. **Pick Target Level** = the level you WANT them to reach")
+    st.markdown("3. **Click GRADE** = get score, mistakes table + corrected version + PDF")
+    st.divider()
+    st.markdown("### 🎯 Which Target Level to Pick?")
+    st.markdown("- **A1 Beginner**: Grade 1-3, new learners. Simple sentences, present tense only.")
+    st.markdown("- **A2 Elementary**: Grade 4-6. Basic past tense, short paragraphs.")
+    st.markdown("- **B1 Intermediate**: Grade 7-9 / High School. 4 paragraphs, linking words (because, however).")
+    st.markdown("- **B2 Upper**: Matric / College / IELTS 5.5-6.5. Clear structure, complex sentences.")
+    st.markdown("- **C1 Advanced**: University / IELTS 7+. Academic vocab, fewer grammar errors.")
+    st.markdown("- **C2 Mastery**: Teacher / IELTS 8+. Near-native, professional.")
+    st.info("💡 **Pro Tip:** The grade ADAPTS to your target. If you pick B2 but essay is A2, it will score low (e.g., 4/10) and show exactly what to fix to REACH B2. Always pick the level you are teaching TOWARDS, not the level they are at now.")
+
 with st.sidebar:
     st.markdown("### 🔑 Your Plan")
     st.info(get_status())
-
     st.markdown("#### 💰 Fair SA Pricing")
     st.markdown("- FREE: 3 essays")
     st.markdown("- Once-off: **R10** = +10 grades")
@@ -47,9 +62,7 @@ with st.sidebar:
     st.markdown("- Yearly: **R799** = 365 days")
     st.markdown("")
     st.caption("Loved it? Send proof and I'll send your code instantly ❤️")
-
     code = st.text_input("Got a code?", placeholder="Paste your code here", type="password").strip().upper()
-
     if st.button("Unlock Code"):
         now = datetime.now()
         code_map = {
@@ -66,15 +79,11 @@ with st.sidebar:
             st.rerun()
         else:
             st.error("That code didn't work — send me your proof and I'll help.")
-
     st.divider()
     st.link_button("💳 Pay on Beacons", "https://beacons.ai/mr_mahomed")
     st.caption("Payshap: 0658006750")
     st.markdown("**Prefer not to WhatsApp?**")
     st.link_button(f"📧 Email proof to {YOUR_EMAIL}", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof&body=Hi, I paid for TEFLMate. Here is my proof:")
-
-with st.expander("📘 CEFR Levels A1-C2", expanded=False):
-    st.markdown("A1 Beginner, A2 Elementary, B1 Intermediate, B2 Upper, C1 Advanced, C2 Mastery")
 
 def clean(text):
     if not text:
@@ -173,7 +182,6 @@ with tab2:
             else:
                 content = uploaded.read().decode("utf-8", errors="ignore")
                 essays = [e.strip() for e in content.split("\n") if e.strip()][:50]
-
             st.info(f"Grading {len(essays)} essays...")
             results = []
             progress = st.progress(0)
@@ -181,7 +189,6 @@ with tab2:
                 res = grade_with_groq(es[:2000], level_b)
                 results.append({"Essay": es[:100], "Result": res})
                 progress.progress((i+1)/len(essays))
-
             st.success(f"Done! {len(results)} graded")
             st.dataframe(pd.DataFrame(results))
             pdf = FPDF()
@@ -204,5 +211,4 @@ with col1:
     st.link_button("💬 WhatsApp Proof", "https://wa.me/27658006750?text=Hi%20I%20paid%20for%20TEFLMate")
 with col2:
     st.link_button("📧 Email Proof", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
-
 st.caption("TEFLMate v4 • Durban, SA • Built by Mr Taahir Mahomed")
