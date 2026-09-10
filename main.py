@@ -13,22 +13,18 @@ st.markdown("""
 
 if "uses" not in st.session_state:
     st.session_state.uses = 0
-if "last_result" not in st.session_state:
-    st.session_state.last_result = ""
-if "last_essay" not in st.session_state:
-    st.session_state.last_essay = ""
 
 st.title("📝 TEFL Essay Grader Pro")
 st.caption("CEFR grading in 5 seconds • Built for TEFL Teachers")
 
 with st.expander("📘 What do the levels mean? (A1 to C2)", expanded=False):
     st.markdown("""
-    **A1 - Beginner:** Simple phrases like "My name is...". Basic mistakes OK.
-    **A2 - Elementary:** Daily routines, simple past with errors.
-    **B1 - Intermediate:** Connected paragraphs, tells a story, mostly correct.
-    **B2 - Upper-Intermediate:** Clear argument, good vocabulary.
-    **C1 - Advanced:** Complex, well-structured, almost native.
-    **C2 - Mastery:** Near-native, precise, academic.
+    **A1 - Beginner:** Simple phrases
+    **A2 - Elementary:** Daily routines
+    **B1 - Intermediate:** Connected paragraphs
+    **B2 - Upper-Intermediate:** Clear argument
+    **C1 - Advanced:** Complex, well-structured
+    **C2 - Mastery:** Near-native
     """)
 
 essay = st.text_area("Paste Student Essay:", height=200, placeholder="I go to market yesterday...")
@@ -71,7 +67,7 @@ def create_branded_pdf(original_essay, ai_result, target_level):
     pdf.ln(5)
     pdf.set_font("Arial", 'B', 11)
     pdf.set_text_color(5, 122, 80)
-    pdf.cell(0, 7, f"AI Grading Result (Full):", ln=True)
+    pdf.cell(0, 7, "AI Grading Result (Full):", ln=True)
     pdf.set_font("Arial", '', 10)
     pdf.set_text_color(50,50,50)
     pdf.multi_cell(0, 6, ai_result[:3000])
@@ -95,12 +91,11 @@ if st.button("GRADE ESSAY ->"):
     try:
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
         with st.spinner(f"Grading as {level} examiner..."):
-            prompt = f"You are a Cambridge TEFL examiner for {level}. Grade: {essay}. Return CEFR Level - Name, Score/10 vs Target {level}, Summary 1 sentence, 2 Strengths, Table Mistake|Correction|Why. Then give corrected version upgraded to next level."
-            res = client.chat.completions.create(model="llama-3.1-8b-instant", messages=[{"role":"user","content":prompt}])
+            prompt = f"You are a Cambridge TEFL examiner for {level}. Grade: {essay}. Return CEFR Level, Score/10 vs Target {level}, Summary 1 sentence, 2 Strengths, Table Mistake|Correction|Why. Then give corrected version upgraded to next level."
+            # FIXED MODEL - NEW GROQ MODEL SEPT 2026
+            res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
             result_text = res.choices[0].message.content
             st.session_state.uses += 1
-            st.session_state.last_result = result_text
-            st.session_state.last_essay = essay
             st.success(f"Free grades left: {1 - st.session_state.uses}")
             st.markdown(result_text)
             pdf_bytes = create_branded_pdf(essay, result_text, level)
