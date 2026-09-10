@@ -15,7 +15,7 @@ except ImportError:
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
 
-st.set_page_config(page_title="TEFLMate v4.1 Pro", page_icon="📝", layout="centered")
+st.set_page_config(page_title="TEFLMate v4.2 Pro", page_icon="📝", layout="centered")
 
 st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:10px;height:45px;font-weight:bold;width:100%;}</style>""", unsafe_allow_html=True)
 
@@ -30,14 +30,15 @@ if "geo" not in st.session_state:
     except:
         country = "ZA"
 
+    # FIXED: PayPal always USD/GBP/EUR - never ZAR (PayPal hates ZAR)
     if country == "ZA":
-        st.session_state.geo = {"symbol":"R", "weekly":"49", "monthly":"99", "yearly":"799", "once":"10", "code":"ZAR", "paypal": f"{PAYPAL_ME}/10ZAR"}
+        st.session_state.geo = {"symbol":"R", "weekly":"49", "monthly":"99", "yearly":"799", "once":"10", "code":"ZAR", "paypal_link": f"{PAYPAL_ME}/8.50USD", "paypal_label": "$8.50 USD (~R99)"}
     elif country == "GB":
-        st.session_state.geo = {"symbol":"£", "weekly":"3.99", "monthly":"6.99", "yearly":"55", "once":"0.99", "code":"GBP", "paypal": f"{PAYPAL_ME}/6.99GBP"}
+        st.session_state.geo = {"symbol":"£", "weekly":"3.99", "monthly":"6.99", "yearly":"55", "once":"0.99", "code":"GBP", "paypal_link": f"{PAYPAL_ME}/6.99GBP", "paypal_label": "£6.99 GBP"}
     elif country in ["DE","FR","NL","IT","ES","PT","IE"]:
-        st.session_state.geo = {"symbol":"€", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"EUR", "paypal": f"{PAYPAL_ME}/8.50EUR"}
+        st.session_state.geo = {"symbol":"€", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"EUR", "paypal_link": f"{PAYPAL_ME}/8.50EUR", "paypal_label": "€8.50 EUR"}
     else:
-        st.session_state.geo = {"symbol":"$", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"USD", "paypal": f"{PAYPAL_ME}/8.50USD"}
+        st.session_state.geo = {"symbol":"$", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"USD", "paypal_link": f"{PAYPAL_ME}/8.50USD", "paypal_label": "$8.50 USD"}
 
 def is_pro():
     if st.session_state.pro_expiry is None:
@@ -110,8 +111,8 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
-st.title("📝 TEFLMate v4.1 - Batch Grader")
-st.caption(f"Grade 50 essays in 4 minutes • Auto Price: {st.session_state.geo['symbol']}{st.session_state.geo['monthly']} {st.session_state.geo['code']}")
+st.title("📝 TEFLMate v4.2 - Batch Grader")
+st.caption(f"Grade 50 essays in 4 minutes • Local: {st.session_state.geo['symbol']}{st.session_state.geo['monthly']} {st.session_state.geo['code']}")
 
 with st.sidebar:
     st.markdown("### 🔑 Your Plan")
@@ -126,8 +127,8 @@ with st.sidebar:
     st.markdown(f"- Yearly: {g['symbol']}{g['yearly']} = 365 days")
     st.divider()
     st.markdown("#### 🌍 Pay Globally")
-    st.link_button(f"💳 Pay with PayPal {g['symbol']}{g['monthly']}", g['paypal'])
-    st.caption("PayPal auto-converts to your local currency")
+    st.link_button(f"💳 Pay with PayPal {g['paypal_label']}", g['paypal_link'])
+    st.caption("PayPal auto-converts to your currency")
     st.markdown("")
     st.caption("Loved it? Send proof and I'll send your code instantly ❤️")
     code = st.text_input("Got a code?", placeholder="Paste your code here", type="password").strip().upper()
@@ -273,5 +274,5 @@ with col1:
 with col2:
     st.link_button(f"📧 Email proof", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
 with col3:
-    st.link_button(f"💳 PayPal {g['symbol']}{g['monthly']}", g['paypal'])
-st.caption("TEFLMate v4.1 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
+    st.link_button(f"💳 {g['paypal_label']}", g['paypal_link'])
+st.caption("TEFLMate v4.2 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
