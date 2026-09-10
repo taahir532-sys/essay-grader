@@ -1,6 +1,6 @@
 streamlit
 groq
-fpdf
+fpdf2
 pandas
 Pillow
 PyMuPDF
