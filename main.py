@@ -5,6 +5,7 @@ from fpdf import FPDF
 import unicodedata
 import pandas as pd
 import base64
+import requests
 
 try:
     import fitz
@@ -12,8 +13,9 @@ except ImportError:
     fitz = None
 
 YOUR_EMAIL = "taahir532@gmail.com"
+PAYPAL_ME = "https://paypal.me/TaahirMahomed"
 
-st.set_page_config(page_title="TEFLMate v4 Pro", page_icon="📝", layout="centered")
+st.set_page_config(page_title="TEFLMate v4.1 Pro", page_icon="📝", layout="centered")
 
 st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:10px;height:45px;font-weight:bold;width:100%;}</style>""", unsafe_allow_html=True)
 
@@ -21,6 +23,21 @@ if "uses" not in st.session_state:
     st.session_state.uses = 0
 if "pro_expiry" not in st.session_state:
     st.session_state.pro_expiry = None
+if "geo" not in st.session_state:
+    try:
+        ip_data = requests.get("https://ipapi.co/json/", timeout=3).json()
+        country = ip_data.get("country_code", "ZA")
+    except:
+        country = "ZA"
+
+    if country == "ZA":
+        st.session_state.geo = {"symbol":"R", "weekly":"49", "monthly":"99", "yearly":"799", "once":"10", "code":"ZAR", "paypal": f"{PAYPAL_ME}/10ZAR"}
+    elif country == "GB":
+        st.session_state.geo = {"symbol":"£", "weekly":"3.99", "monthly":"6.99", "yearly":"55", "once":"0.99", "code":"GBP", "paypal": f"{PAYPAL_ME}/6.99GBP"}
+    elif country in ["DE","FR","NL","IT","ES","PT","IE"]:
+        st.session_state.geo = {"symbol":"€", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"EUR", "paypal": f"{PAYPAL_ME}/8.50EUR"}
+    else:
+        st.session_state.geo = {"symbol":"$", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"USD", "paypal": f"{PAYPAL_ME}/8.50USD"}
 
 def is_pro():
     if st.session_state.pro_expiry is None:
@@ -93,19 +110,24 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
-st.title("📝 TEFLMate v4 - Batch Grader")
-st.caption("Grade 50 essays in 4 minutes • Fair Price SA")
+st.title("📝 TEFLMate v4.1 - Batch Grader")
+st.caption(f"Grade 50 essays in 4 minutes • Auto Price: {st.session_state.geo['symbol']}{st.session_state.geo['monthly']} {st.session_state.geo['code']}")
 
 with st.sidebar:
     st.markdown("### 🔑 Your Plan")
     st.info(get_status())
-    st.markdown("#### 💰 Fair SA Pricing")
-    st.markdown("- FREE: 3 essays")
-    st.markdown("- Once-off: R10 = +10 grades")
-    st.markdown("- Weekly: R49 = 7 days unlimited")
-    st.markdown("- Monthly: R99 = 30 days unlimited + Batch 50 Tool")
+    g = st.session_state.geo
+    st.markdown(f"#### 💰 Pricing ({g['code']})")
+    st.markdown(f"- FREE: 3 essays")
+    st.markdown(f"- Once-off: {g['symbol']}{g['once']} = +10 grades")
+    st.markdown(f"- Weekly: {g['symbol']}{g['weekly']} = 7 days unlimited")
+    st.markdown(f"- Monthly: {g['symbol']}{g['monthly']} = 30 days unlimited + Batch 50 Tool")
     st.caption("Batch 50 = Upload CSV and grade 50 essays at once into 1 PDF. For teachers with many books.")
-    st.markdown("- Yearly: R799 = 365 days")
+    st.markdown(f"- Yearly: {g['symbol']}{g['yearly']} = 365 days")
+    st.divider()
+    st.markdown("#### 🌍 Pay Globally")
+    st.link_button(f"💳 Pay with PayPal {g['symbol']}{g['monthly']}", g['paypal'])
+    st.caption("PayPal auto-converts to your local currency")
     st.markdown("")
     st.caption("Loved it? Send proof and I'll send your code instantly ❤️")
     code = st.text_input("Got a code?", placeholder="Paste your code here", type="password").strip().upper()
@@ -142,9 +164,7 @@ with tab1:
 
 with tab2:
     st.markdown("### Upload 50 Essays At Once")
-    st.info("Monthly R99 unlocks this: Grade 50 essays at once instead of one by one.")
-
-    # CSV TEMPLATE BUILT-IN ON THE APP
+    st.info(f"Monthly {g['symbol']}{g['monthly']} unlocks this: Grade 50 essays at once instead of one by one.")
     sample_df = pd.DataFrame({
         "student_name": ["Student 1", "Student 2", "Student 3"],
         "essay": [
@@ -157,12 +177,11 @@ with tab2:
     st.download_button("📥 Download CSV Template - Fill 50 essays here", csv_template, file_name="TEFLMate_Batch_Template_50.csv", mime="text/csv", key="template_btn")
     st.caption("1. Download template above 2. Open in Excel/Sheets 3. Replace essays with your 50 students 4. Save and upload below")
     st.divider()
-
     level_b = st.selectbox("Target Level for batch:", ["A1","A2","B1","B2","C1","C2"], key="batch_level")
     uploaded = st.file_uploader("Upload your filled CSV or TXT", type=["csv","txt"], key="batch_file")
     if st.button("GRADE BATCH 50 ->"):
         if not is_pro():
-            st.error("Batch 50 needs Monthly PRO R99")
+            st.error(f"Batch 50 needs Monthly PRO {g['symbol']}{g['monthly']}")
             st.stop()
         if not uploaded:
             st.warning("Upload file first")
@@ -247,10 +266,12 @@ with tab4:
     ]))
 
 st.divider()
-st.markdown("### ❤️ Payshap 0658006750 | Send proof by WhatsApp or Email and I'll send your code")
-col1, col2 = st.columns(2)
+st.markdown("### ❤️ Payshap 0658006750 | PayPal: paypal.me/TaahirMahomed | Send proof by WhatsApp or Email and I'll send your code")
+col1, col2, col3 = st.columns(3)
 with col1:
     st.link_button("💬 WhatsApp Proof", "https://wa.me/27658006750?text=Hi%20I%20paid%20for%20TEFLMate")
 with col2:
-    st.link_button(f"📧 Email proof to {YOUR_EMAIL}", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
-st.caption("TEFLMate v4 • Durban, SA • Built by Mr Taahir Mahomed")
+    st.link_button(f"📧 Email proof", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
+with col3:
+    st.link_button(f"💳 PayPal {g['symbol']}{g['monthly']}", g['paypal'])
+st.caption("TEFLMate v4.1 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
