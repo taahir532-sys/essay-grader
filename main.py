@@ -13,7 +13,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- STATE ---
 if "uses" not in st.session_state:
     st.session_state.uses = 0
 if "pro_expiry" not in st.session_state:
@@ -36,7 +35,6 @@ def get_status():
 st.title("📝 TEFLMate v4 - Batch Grader")
 st.caption("Grade 50 essays in 4 minutes • Fair Price SA")
 
-# --- SIDEBAR PRICING (NEW FAIR PRICES) ---
 with st.sidebar:
     st.markdown("### 🔑 Your Plan")
     st.info(get_status())
@@ -47,20 +45,20 @@ with st.sidebar:
     **Once-off: R10** = +10 grades\n
     **Weekly: R49** = 7 days unlimited\n
     **Monthly: R99** = 30 days unlimited + Batch 50\n
-    **Yearly: R799** = 365 days
+    **Yearly: R799** = 365 days\n
+    \n*Pay then WhatsApp for code*
     """)
 
-    code = st.text_input("Enter Code after Payshap:", placeholder="e.g. TEACH10", type="password").strip().upper()
+    code = st.text_input("Enter Code after Payshap:", placeholder="Enter code", type="password").strip().upper()
 
     if st.button("Unlock Code"):
         now = datetime.now()
-        # CODES YOU GIVE AFTER PAYMENT
         code_map = {
             "TEACH10": ("+10 grades", lambda: setattr(st.session_state, 'uses', max(0, st.session_state.uses - 10))),
             "WEEK49": ("Weekly Pro", lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=7))),
             "MONTH99": ("Monthly Pro", lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=30))),
             "YEAR799": ("Yearly Pro", lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=365))),
-            "TEFL2026": ("Monthly Pro", lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=30))), # keep old code working
+            "TEFL2026": ("Monthly Pro", lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=30))),
         }
         if code in code_map:
             label, action = code_map[code]
@@ -68,14 +66,15 @@ with st.sidebar:
             st.success(f"Unlocked {label}!")
             st.rerun()
         else:
-            st.error("Invalid code. Pay then use code from WhatsApp.")
+            st.error("Invalid code. Pay then WhatsApp proof.")
 
     st.divider()
-    st.link_button("Pay R10 - 10 Essays", "https://beacons.ai/mr_mahomed")
-    st.link_button("Pay R49 Weekly / R99 Monthly", "https://beacons.ai/mr_mahomed")
-    st.caption("Payshap: 0658006750\nSend proof to WhatsApp")
+    st.link_button("Pay on Beacons", "https://beacons.ai/mr_mahomed")
+    st.caption("Payshap: 0658006750")
 
-# --- HELPERS (FROM YOUR WORKING V3 - NO ERRORS) ---
+with st.expander("📘 CEFR Levels A1-C2", expanded=False):
+    st.markdown("A1 Beginner, A2 Elementary, B1 Intermediate, B2 Upper, C1 Advanced, C2 Mastery")
+
 def clean(text):
     if not text:
         return ""
@@ -129,7 +128,6 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
-# --- TABS ---
 tab1, tab2 = st.tabs(["Single Essay", "Batch 50 (PRO)"])
 
 with tab1:
@@ -137,7 +135,7 @@ with tab1:
     level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level")
     if st.button("GRADE ESSAY ->", key="single_btn"):
         if not is_pro() and st.session_state.uses >= 3:
-            st.error("Free limit 3 reached! Pay R10 for +10 grades. Code: TEACH10")
+            st.error("Free limit 3 reached! Pay R10 for +10 grades.")
             st.stop()
         if not essay.strip():
             st.warning("Paste an essay first")
@@ -161,7 +159,7 @@ with tab2:
     uploaded = st.file_uploader("Upload file", type=["csv","txt"])
     if st.button("GRADE BATCH 50 ->", key="batch_btn"):
         if not is_pro():
-            st.error("Batch is PRO only. Pay R99 Monthly Code MONTH99")
+            st.error("Batch is PRO only. Pay R99 Monthly.")
             st.stop()
         if not uploaded:
             st.warning("Upload file first")
@@ -200,6 +198,6 @@ with tab2:
             st.error(f"Batch Error: {e}")
 
 st.divider()
-st.markdown("### ❤️ Payshap 0658006750 | Codes: TEACH10 (R10) / WEEK49 / MONTH99 / YEAR799")
+st.markdown("### ❤️ Payshap 0658006750 | WhatsApp proof to get unlock code")
 st.link_button("WhatsApp Proof + Get Code", "https://wa.me/27658006750?text=Hi%20I%20paid%20for%20TEFLMate")
 st.caption("TEFLMate v4 • Durban, SA • Built by Mr Taahir Mahomed")
