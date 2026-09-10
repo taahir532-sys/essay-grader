@@ -2,6 +2,7 @@ import streamlit as st
 from groq import Groq
 from datetime import datetime
 from fpdf import FPDF
+import unicodedata
 
 st.set_page_config(page_title="TEFL Grader Pro", page_icon="📝", layout="centered")
 
@@ -16,7 +17,6 @@ if "uses" not in st.session_state:
 if "last_pdf" not in st.session_state:
     st.session_state.last_pdf = None
 
-# Hidden reset for you only: add?reset=1 to URL to reset
 if st.query_params.get("reset") == "1":
     st.session_state.uses = 0
     st.session_state.last_pdf = None
@@ -24,21 +24,20 @@ if st.query_params.get("reset") == "1":
 st.title("📝 TEFL Essay Grader Pro")
 st.caption("CEFR grading in 5 seconds • Built for TEFL Teachers")
 
-with st.expander("📘 What do the levels mean? (A1 to C2)", expanded=False):
-    st.markdown("A1 Beginner, A2 Elementary, B1 Intermediate, B2 Upper, C1 Advanced, C2 Mastery")
-
 essay = st.text_area("Paste Student Essay:", height=200, placeholder="I go to market yesterday...")
 level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"])
 
 def clean(text):
-    if not text: return ""
-    return text.replace('“','"').replace('”','"').replace('’',"'").replace('‘',"'").replace('–','-').replace('—','-')
+    if not text:
+        return ""
+    # This fixes your exact error in photo - removes ANY unicode helvetica can't handle
+    text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
+    return text
 
 def create_branded_pdf(original_essay, ai_result, target_level):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    # Header
     pdf.set_fill_color(17, 24, 39)
     pdf.rect(0, 0, 210, 32, 'F')
     pdf.set_y(7)
@@ -47,27 +46,23 @@ def create_branded_pdf(original_essay, ai_result, target_level):
     pdf.cell(0, 8, "Mr Mahomed | Essay Grader Report", align='C', ln=True)
     pdf.set_font("Arial", '', 8)
     pdf.set_text_color(200,200,200)
-    pdf.cell(0, 5, "beacons.ai/mr_mahomed | TEFL Grader Pro", align='C', ln=True)
+    pdf.cell(0, 5, "beacons.ai/mr_mahomed", align='C', ln=True)
     pdf.ln(10)
     pdf.set_text_color(0,0,0)
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 7, f"Target Level: {target_level} | Date: {datetime.now().strftime('%d %b %Y')}", ln=True)
-    pdf.set_font("Arial", '', 8)
-    pdf.set_text_color(100,100,100)
-    pdf.cell(0, 4, "Graded in 4.8s | 50 essays: 8hrs -> 4.2mins saved", ln=True)
-    pdf.ln(4)
-    # Box - auto height, NO OVERLAP
+    pdf.ln(2)
     pdf.set_fill_color(240, 245, 255)
     pdf.set_font("Arial", '', 10)
     pdf.set_text_color(30, 64, 175)
-    pdf.multi_cell(0, 6, clean(ai_result[:600]), border=1, fill=True)
-    pdf.ln(5)
+    pdf.multi_cell(0, 6, clean(ai_result[:700]), border=1, fill=True)
+    pdf.ln(4)
     pdf.set_font("Arial", 'B', 11)
     pdf.set_text_color(0,0,0)
     pdf.cell(0, 7, "Original Essay:", ln=True)
     pdf.set_font("Arial", '', 10)
     pdf.multi_cell(0, 6, clean(original_essay))
-    pdf.ln(5)
+    pdf.ln(4)
     pdf.set_font("Arial", 'B', 11)
     pdf.set_text_color(5, 122, 80)
     pdf.cell(0, 7, "Full Grading Result:", ln=True)
@@ -83,27 +78,25 @@ def create_branded_pdf(original_essay, ai_result, target_level):
 
 if st.button("GRADE ESSAY ->"):
     if st.session_state.uses >= 1:
-        st.error("🚫 Free limit reached!")
-        st.info("You used your 1 free grade. Pay R30 via Payshap 0658006750")
+        st.error("Free limit reached!")
         if st.session_state.last_pdf:
-            st.download_button("📄 Download Last PDF Report", st.session_state.last_pdf, file_name="Essay_Report.pdf", mime="application/pdf")
+            st.download_button("Download Last PDF Report", st.session_state.last_pdf, file_name="Essay_Report.pdf", mime="application/pdf")
         st.stop()
     if not essay.strip():
         st.warning("Paste an essay first")
         st.stop()
     try:
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        with st.spinner(f"Grading as {level} examiner..."):
-            prompt = f"You are a Cambridge TEFL examiner for {level}. Grade: {essay}. Return CEFR Level, Score/10 vs Target {level}, Summary 1 sentence, 2 Strengths, Table Mistake|Correction|Why. Then give corrected version upgraded to next level. Use plain ASCII quotes only."
+        with st.spinner(f"Grading as {level}..."):
+            prompt = f"You are a Cambridge TEFL examiner for {level}. Grade: {essay}. Return plain ASCII only, no unicode bullets or fancy dashes. Use hyphen - only. Return CEFR Level, Score/10 vs Target {level}, Summary 1 sentence, 2 Strengths, Table Mistake|Correction|Why. Then corrected version upgraded to next level."
             res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
             result_text = res.choices[0].message.content
             st.session_state.uses += 1
-            st.success(f"Free grades left: {1 - st.session_state.uses}")
             st.markdown(result_text)
             pdf_bytes = create_branded_pdf(essay, result_text, level)
             st.session_state.last_pdf = pdf_bytes
             st.download_button(
-                label="📄 Download Branded PDF Report (Send to Student)",
+                label="Download Branded PDF Report (Send to Student)",
                 data=pdf_bytes,
                 file_name=f"Essay_Report_{level}_{datetime.now().strftime('%Y%m%d')}.pdf",
                 mime="application/pdf"
@@ -112,8 +105,4 @@ if st.button("GRADE ESSAY ->"):
         st.error(f"Error: {e}")
 
 st.divider()
-st.markdown("### ❤️ Need more? Get Full Detailed Correction")
-st.markdown("Pay **R30 via Payshap to 0658006750** then click below:")
 st.link_button("I Paid R30 - Send Essay on WhatsApp", "https://wa.me/27658006750?text=Hi%20I%20paid%20R30%20for%20essay%20correction")
-st.markdown("---")
-st.caption("TEFL Grader Pro • Cambridge CEFR Standard • Durban, SA • Built by Mr Taahir Mahomed")
