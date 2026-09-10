@@ -96,7 +96,6 @@ def grade_with_groq(essay_text, level):
 st.title("📝 TEFLMate v4 - Batch Grader")
 st.caption("Grade 50 essays in 4 minutes • Fair Price SA")
 
-# LEFT SIDEBAR - ORIGINAL CLEAN - NO BEACONS
 with st.sidebar:
     st.markdown("### 🔑 Your Plan")
     st.info(get_status())
@@ -142,13 +141,31 @@ with tab1:
             st.download_button("📄 Download PDF", create_branded_pdf(essay, result_text, level), file_name=f"Report_{level}.pdf")
 
 with tab2:
-    st.markdown("Upload CSV with column `essay` or TXT 1 per line. PRO only.")
+    st.markdown("### Upload 50 Essays At Once")
     st.info("Monthly R99 unlocks this: Grade 50 essays at once instead of one by one.")
+
+    # CSV TEMPLATE BUILT-IN ON THE APP
+    sample_df = pd.DataFrame({
+        "student_name": ["Student 1", "Student 2", "Student 3"],
+        "essay": [
+            "I go to market yesterday. It was very fun because I buyed many things.",
+            "My best friend is Thandi. She is kind and she help me every day.",
+            "I broken my leg last week. I was playing soccer and I fall down."
+        ]
+    })
+    csv_template = sample_df.to_csv(index=False).encode('utf-8')
+    st.download_button("📥 Download CSV Template - Fill 50 essays here", csv_template, file_name="TEFLMate_Batch_Template_50.csv", mime="text/csv", key="template_btn")
+    st.caption("1. Download template above 2. Open in Excel/Sheets 3. Replace essays with your 50 students 4. Save and upload below")
+    st.divider()
+
     level_b = st.selectbox("Target Level for batch:", ["A1","A2","B1","B2","C1","C2"], key="batch_level")
-    uploaded = st.file_uploader("Upload file", type=["csv","txt"], key="batch_file")
+    uploaded = st.file_uploader("Upload your filled CSV or TXT", type=["csv","txt"], key="batch_file")
     if st.button("GRADE BATCH 50 ->"):
         if not is_pro():
             st.error("Batch 50 needs Monthly PRO R99")
+            st.stop()
+        if not uploaded:
+            st.warning("Upload file first")
             st.stop()
         essays = []
         if uploaded.name.endswith(".csv"):
@@ -158,16 +175,18 @@ with tab2:
         else:
             content = uploaded.read().decode("utf-8", errors="ignore")
             essays = [e.strip() for e in content.split("\n") if e.strip()][:50]
+        st.info(f"Grading {len(essays)} essays...")
         results = []; progress = st.progress(0)
         for i, es in enumerate(essays):
             results.append({"Essay": es[:100], "Result": grade_with_groq(es[:2000], level_b)})
             progress.progress((i+1)/len(essays))
+        st.success(f"Done! {len(results)} graded")
         st.dataframe(pd.DataFrame(results))
         pdf = FPDF(); pdf.set_auto_page_break(auto=True, margin=15)
         for idx, r in enumerate(results):
             pdf.add_page(); pdf.set_font("Arial", 'B', 12); pdf.cell(0, 10, f"Essay {idx+1}", ln=True)
             pdf.set_font("Arial", '', 10); pdf.multi_cell(0, 6, clean(r["Result"]))
-        st.download_button("📄 Download All 50", pdf.output(dest='S').encode('latin-1'), file_name="Batch_50.pdf")
+        st.download_button("📄 Download All 50 Reports PDF", pdf.output(dest='S').encode('latin-1'), file_name="Batch_50.pdf")
 
 with tab3:
     st.markdown("### 📸 Photo or PDF Scan")
@@ -205,34 +224,28 @@ with tab3:
 
 with tab4:
     st.markdown("## 📘 How Target Levels Work")
-    st.info("Target Level = The level you WANT them to reach. We grade AGAINST that level. So we are strict like that exam.")
+    st.info("Target Level = The level you WANT them to reach. We grade AGAINST that level.")
     st.markdown("### 🎯 Choose Like This")
     c1, c2 = st.columns(2)
     with c1:
-        st.success("**🟢 A1 – Beginner**\n\nGrade 1-3\n\n*I am happy. My name is...*\n\nChecks: Capitals, full stop, spelling")
-        st.warning("**🟡 B1 – Intermediate**\n\nGrade 7-9 CAPS\n\n*120 words, 4 paragraphs, however*\n\nChecks: Paragraphs, linking words")
-        st.error("**🔴 C1 – Advanced**\n\nUniversity / IELTS 7+\n\n*250 words academic*\n\nChecks: Academic vocab")
+        st.success("**🟢 A1 – Beginner**\n\nGrade 1-3\n\n*I am happy...*\n\nChecks: Capitals, full stop")
+        st.warning("**🟡 B1 – Intermediate**\n\nGrade 7-9\n\n*120 words, however*\n\nChecks: Paragraphs")
+        st.error("**🔴 C1 – Advanced**\n\nUniversity\n\n*250 words academic*")
     with c2:
-        st.info("**🔵 A2 – Elementary**\n\nGrade 4-6\n\n*Yesterday I went to shop...*\n\nChecks: Past tense, and/but/because")
-        st.error("**🟠 B2 – Matric / College**\n\nGrade 10-12, IELTS 5.5-6.5\n\n*200 words, argument*\n\nChecks: Cohesion, vocab range")
-        st.markdown("**⚫ C2 – Mastery**\n\nTeacher / IELTS 8+\n\n*Near native*\n\nChecks: Everything")
-
+        st.info("**🔵 A2 – Elementary**\n\nGrade 4-6\n\n*Yesterday I went...*\n\nChecks: Past tense")
+        st.error("**🟠 B2 – Matric**\n\nGrade 10-12, IELTS 5.5\n\n*200 words argument*")
+        st.markdown("**⚫ C2 – Mastery**\n\nTeacher / IELTS 8+\n\n*Near native*")
     st.markdown("---")
-    st.markdown("#### 💡 Pro Tip")
-    st.markdown("If student is A2 but you want them to reach B1, **PICK B1**. The report will show GAP: what they miss to get to B1.")
-    st.markdown("Your photo note: *BUILDING CUSTOMER LOYALTY...* = **C1 business English**. So pick C1 or B2.")
-    st.markdown("---")
-    st.markdown("### 📊 Quick Table")
+    st.markdown("💡 If student is A2 but you want B1, **PICK B1**. Report shows GAP.")
     st.table(pd.DataFrame([
-        {"Level": "A1", "Class": "Grade 1-3", "Words": "20-40", "Use For": "ABET, Very weak"},
-        {"Level": "A2", "Class": "Grade 4-6", "Words": "50-80", "Use For": "Primary ESL"},
+        {"Level": "A1", "Class": "Grade 1-3", "Words": "20-40", "Use For": "ABET"},
+        {"Level": "A2", "Class": "Grade 4-6", "Words": "50-80", "Use For": "Primary"},
         {"Level": "B1", "Class": "Grade 7-9", "Words": "120-150", "Use For": "High school"},
-        {"Level": "B2", "Class": "Matric", "Words": "180-250", "Use For": "Matric, College, TVET"},
+        {"Level": "B2", "Class": "Matric", "Words": "180-250", "Use For": "Matric, College"},
         {"Level": "C1", "Class": "University", "Words": "250-300", "Use For": "University, Work"},
         {"Level": "C2", "Class": "Mastery", "Words": "300+", "Use For": "Teachers"},
     ]))
 
-# BOTTOM SECTION - ORIGINAL - PAYSHAP + WHATSAPP + EMAIL
 st.divider()
 st.markdown("### ❤️ Payshap 0658006750 | Send proof by WhatsApp or Email and I'll send your code")
 col1, col2 = st.columns(2)
