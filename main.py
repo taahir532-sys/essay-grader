@@ -39,9 +39,7 @@ if "geo" not in st.session_state:
         st.session_state.geo = {"symbol":"$", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"USD"}
 
 def is_pro():
-    if st.session_state.pro_expiry is None:
-        return False
-    return datetime.now() < st.session_state.pro_expiry
+    return st.session_state.pro_expiry is not None and datetime.now() < st.session_state.pro_expiry
 
 def get_status():
     if is_pro():
@@ -56,18 +54,28 @@ def clean(text):
 def extract_text_from_image(image_bytes):
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
     b64 = base64.b64encode(image_bytes).decode('utf-8')
-    try:
-        res = client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
-            messages=[{"role": "user","content": [
-                {"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
-            ]}]
-        )
-        txt = res.choices[0].message.content
-        return txt.strip()
-    except Exception as e:
-        return f"OCR_ERROR: {e}"
+    # Try all vision models that work on free Groq keys
+    models_to_try = [
+        "llama-3.2-90b-vision-preview",
+        "llama-3.2-11b-vision-preview",
+        "meta-llama/llama-4-maverick-17b-128e-instruct",
+        "meta-llama/llama-4-scout-17b-16e-instruct"
+    ]
+    last_err = ""
+    for model_id in models_to_try:
+        try:
+            res = client.chat.completions.create(
+                model=model_id,
+                messages=[{"role": "user","content": [
+                    {"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                ]}]
+            )
+            return res.choices[0].message.content.strip()
+        except Exception as e:
+            last_err = str(e)
+            continue
+    return f"OCR_ERROR: {last_err}"
 
 def extract_text_from_pdf(pdf_bytes):
     if not fitz:
