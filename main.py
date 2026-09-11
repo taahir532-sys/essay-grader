@@ -15,7 +15,7 @@ except ImportError:
 
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
-st.set_page_config(page_title="TEFLMate v6.0.2 Pro - Phase 2", page_icon="📝", layout="centered")
+st.set_page_config(page_title="TEFLMate v6.0.3 Pro - Phase 2", page_icon="📝", layout="centered")
 st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:10px;height:45px;font-weight:bold;width:100%;} div[data-testid="stLinkButton"]>a{background:#111!important;color:white!important;border-radius:10px!important;height:45px!important;font-weight:bold!important;width:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;}</style>""", unsafe_allow_html=True)
 
 if "uses" not in st.session_state:
@@ -79,16 +79,27 @@ def extract_score_cefr(text):
     except:
         return 0, "N/A"
 
-# --- SAFE EXCEL HELPER: never crashes even if openpyxl missing ---
+# --- v6.0.3 PRETTY EXCEL: auto-wide columns so teachers see 2 columns clean ---
 def df_to_excel_bytes_safe(df, sheet_name="Sheet1"):
     try:
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name=sheet_name)
+            ws = writer.sheets[sheet_name]
+            ws.column_dimensions['A'].width = 22 # Student Name wide
+            ws.column_dimensions['B'].width = 85 # Essay wide
+            ws.column_dimensions['C'].width = 15
+            ws.column_dimensions['D'].width = 12
+            ws.column_dimensions['E'].width = 50
         return output.getvalue(), "xlsx"
     except Exception:
-        # fallback to csv if openpyxl not installed
-        return df.to_csv(index=False).encode('utf-8'), "csv"
+        try:
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name=sheet_name)
+            return output.getvalue(), "xlsx"
+        except:
+            return df.to_csv(index=False).encode('utf-8'), "csv"
 
 def init_paystack(email, amount_kobo, plan_code):
     try:
@@ -192,7 +203,7 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
-st.title("📝 TEFLMate v6.0.2 - Phase 2 Classroom")
+st.title("📝 TEFLMate v6.0.3 - Phase 2 Classroom")
 st.caption(f"Grade 50 essays in 4 minutes • Class Reports + Excel • Pricing in {st.session_state.geo['code']}")
 
 with st.sidebar:
@@ -291,7 +302,6 @@ with tab2:
             "I want to be a doctor when I grow up because I want to help people."
         ]
     })
-    # SAFE: Excel if possible, else CSV fallback - never crashes
     template_bytes, template_type = df_to_excel_bytes_safe(sample_df, "Essays")
     if template_type == "xlsx":
         st.download_button("📥 Download Excel Template (50 Students) - Proper 2 Columns", template_bytes, file_name="TEFLMate_Batch_Template_50_Phase2.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="template_btn")
@@ -421,4 +431,4 @@ with col2:
     st.link_button(f"📧 Email proof", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
 with col3:
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-st.caption("TEFLMate v6.0.2 Phase 2 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
+st.caption("TEFLMate v6.0.3 Phase 2 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
