@@ -217,7 +217,6 @@ with st.sidebar:
     g = st.session_state.geo
     if g['code'] == "ZAR":
         st.markdown(f"#### 💰 1-Click Pay ({g['code']})")
-        # FIXED TEXT - honest
         st.caption("1. Tap a button below 2. Pay on Paystack 3. Return here 4. Tap Check Payment to unlock")
         email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email_v51")
         if not st.session_state.pay_links and email:
@@ -233,12 +232,15 @@ with st.sidebar:
             st.link_button("⭐ Pay Monthly R99 - 30 days - Unlimited + Batch 50", st.session_state.pay_links.get("MONTH99","#"), use_container_width=True)
             st.link_button("💳 Pay Yearly R799 - 365 days - Unlimited + Batch 50", st.session_state.pay_links.get("YEAR799","#"), use_container_width=True)
             st.write("")
-            # ONLY ONE BUTTON NOW
-            if st.button("✅ Check Payment - Unlock My Plan", type="primary", use_container_width=True):
-                if verify_all_refs():
-                    st.rerun()
-                else:
-                    st.warning("Payment not confirmed yet. Make sure you finished paying on Paystack, then wait 10 seconds and tap again.")
+            # FINAL FIX: Hide Check Payment if already active
+            if is_pro() or (st.session_state.active_plan == "ONCE10" and (3 - st.session_state.uses) > 3):
+                st.success("✅ Your plan is already active — no need to check again")
+            else:
+                if st.button("✅ Check Payment - Unlock My Plan", type="primary", use_container_width=True):
+                    if verify_all_refs():
+                        st.rerun()
+                    else:
+                        st.warning("Payment not confirmed yet. Make sure you finished paying on Paystack, then wait 10 seconds and tap again.")
     else:
         st.markdown(f"#### 💰 Pricing ({g['code']})")
         st.markdown(f"- FREE: 3 essays")
