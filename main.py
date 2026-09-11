@@ -58,16 +58,14 @@ def extract_text_from_image(image_bytes):
     b64 = base64.b64encode(image_bytes).decode('utf-8')
     try:
         res = client.chat.completions.create(
-            model="qwen/qwen3-32b",
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[{"role": "user","content": [
                 {"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."},
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
             ]}]
         )
         txt = res.choices[0].message.content
-        if "</think>" in txt:
-            txt = txt.split("</think>")[-1].strip()
-        return txt
+        return txt.strip()
     except Exception as e:
         return f"OCR_ERROR: {e}"
 
