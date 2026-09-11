@@ -15,7 +15,7 @@ except ImportError:
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
 
-st.set_page_config(page_title="TEFLMate v4.2 Pro", page_icon="📝", layout="centered")
+st.set_page_config(page_title="TEFLMate v5.1 Pro", page_icon="📝", layout="centered")
 
 st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:10px;height:45px;font-weight:bold;width:100%;}</style>""", unsafe_allow_html=True)
 
@@ -29,7 +29,6 @@ if "geo" not in st.session_state:
         country = ip_data.get("country_code", "ZA")
     except:
         country = "ZA"
-
     if country == "ZA":
         st.session_state.geo = {"symbol":"R", "weekly":"49", "monthly":"99", "yearly":"799", "once":"10", "code":"ZAR"}
     elif country == "GB":
@@ -59,7 +58,7 @@ def extract_text_from_image(image_bytes):
     b64 = base64.b64encode(image_bytes).decode('utf-8')
     try:
         res = client.chat.completions.create(
-            model="meta-llama/llama-3.2-11b-vision-preview",
+            model="qwen/qwen3-32b",
             messages=[{"role": "user","content": [
                 {"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."},
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
@@ -110,7 +109,7 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
-st.title("📝 TEFLMate v4.2 - Batch Grader")
+st.title("📝 TEFLMate v5.1 - Batch Grader")
 st.caption(f"Grade 50 essays in 4 minutes • Pricing in {st.session_state.geo['code']}")
 
 with st.sidebar:
@@ -167,11 +166,7 @@ with tab2:
     st.info(f"Monthly {g['symbol']}{g['monthly']} unlocks this: Grade 50 essays at once instead of one by one.")
     sample_df = pd.DataFrame({
         "student_name": ["Student 1", "Student 2", "Student 3"],
-        "essay": [
-            "I go to market yesterday. It was very fun because I buyed many things.",
-            "My best friend is Thandi. She is kind and she help me every day.",
-            "I broken my leg last week. I was playing soccer and I fall down."
-        ]
+        "essay": ["I go to market yesterday. It was very fun because I buyed many things.", "My best friend is Thandi. She is kind and she help me every day.", "I broken my leg last week. I was playing soccer and I fall down."]
     })
     csv_template = sample_df.to_csv(index=False).encode('utf-8')
     st.download_button("📥 Download CSV Template - Fill 50 essays here", csv_template, file_name="TEFLMate_Batch_Template_50.csv", mime="text/csv", key="template_btn")
@@ -274,4 +269,4 @@ with col2:
     st.link_button(f"📧 Email proof", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
 with col3:
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-st.caption("TEFLMate v4.2 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
+st.caption("TEFLMate v5.1 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
