@@ -13,26 +13,44 @@ except ImportError:
 
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
-st.set_page_config(page_title="TEFLMate v5.5.2 Fixed", page_icon="📝", layout="centered")
-st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:12px;height:52px;font-weight:bold;width:100%;font-size:15px;} div[data-testid="stLinkButton"]>a{background:#111!important;color:white!important;border-radius:12px!important;height:52px!important;font-weight:bold!important;width:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:14px!important;}</style>""", unsafe_allow_html=True)
+st.set_page_config(page_title="TEFLMate v5.1 Pro", page_icon="📝", layout="centered")
+st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:10px;height:45px;font-weight:bold;width:100%;} div[data-testid="stLinkButton"]>a{background:#111!important;color:white!important;border-radius:10px!important;height:45px!important;font-weight:bold!important;width:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;}</style>""", unsafe_allow_html=True)
 
-if "uses" not in st.session_state: st.session_state.uses = 0
-if "pro_expiry" not in st.session_state: st.session_state.pro_expiry = None
-if "pay_links" not in st.session_state: st.session_state.pay_links = {}
-if "pay_refs" not in st.session_state: st.session_state.pay_refs = {}
-if "last_ref" not in st.session_state: st.session_state.last_ref = None
+if "uses" not in st.session_state:
+    st.session_state.uses = 0
+if "pro_expiry" not in st.session_state:
+    st.session_state.pro_expiry = None
+if "pay_links" not in st.session_state:
+    st.session_state.pay_links = {}
+if "pay_refs" not in st.session_state:
+    st.session_state.pay_refs = {}
 if "geo" not in st.session_state:
-    try: country = requests.get("https://ipapi.co/json/", timeout=3).json().get("country_code","ZA")
-    except: country="ZA"
-    if country=="ZA": st.session_state.geo={"symbol":"R","weekly":"49","monthly":"99","yearly":"799","once":"10","code":"ZAR"}
-    else: st.session_state.geo={"symbol":"$","weekly":"4.99","monthly":"8.50","yearly":"65","once":"0.99","code":"USD"}
+    try:
+        ip_data = requests.get("https://ipapi.co/json/", timeout=3).json()
+        country = ip_data.get("country_code", "ZA")
+    except:
+        country = "ZA"
+    if country == "ZA":
+        st.session_state.geo = {"symbol":"R", "weekly":"49", "monthly":"99", "yearly":"799", "once":"10", "code":"ZAR"}
+    elif country == "GB":
+        st.session_state.geo = {"symbol":"£", "weekly":"3.99", "monthly":"6.99", "yearly":"55", "once":"0.99", "code":"GBP"}
+    elif country in ["DE","FR","NL","IT","ES","PT","IE"]:
+        st.session_state.geo = {"symbol":"€", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"EUR"}
+    else:
+        st.session_state.geo = {"symbol":"$", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"USD"}
 
-def is_pro(): return st.session_state.pro_expiry is not None and datetime.now() < st.session_state.pro_expiry
+def is_pro():
+    return st.session_state.pro_expiry is not None and datetime.now() < st.session_state.pro_expiry
 def get_status():
-    if is_pro(): return f"PRO ACTIVE - {(st.session_state.pro_expiry-datetime.now()).days+1} days left"
-    else: return f"FREE - {3-st.session_state.uses} left"
-def clean(t): return unicodedata.normalize('NFKD', t or "").encode('ascii','ignore').decode('ascii')
+    if is_pro():
+        days = (st.session_state.pro_expiry - datetime.now()).days
+        return f"PRO ACTIVE - {days+1} days left"
+    else:
+        return f"FREE - {3 - st.session_state.uses} left"
+def clean(text):
+    return unicodedata.normalize('NFKD', text or "").encode('ascii', 'ignore').decode('ascii')
 
+# --- PAYSTACK ADDED - NOTHING ELSE CHANGED ---
 def init_paystack(email, amount_kobo, plan_code):
     try:
         secret = st.secrets["PAYSTACK_SECRET_KEY"]
@@ -51,164 +69,274 @@ def verify_paystack(ref):
     except Exception as e:
         return {"status": False, "message": str(e)}
 
-def unlock(v):
+def unlock_paystack(v):
     if not v.get("status"): return False
     d=v.get("data",{})
     if d.get("status")!="success": return False
     amt=d.get("amount",0); plan=d.get("metadata",{}).get("plan",""); now=datetime.now()
-    if amt==1000 or plan=="ONCE10": st.session_state.uses=max(0,st.session_state.uses-10); st.session_state.last_ref=None; st.success("R10 received! +10 grades added ✅"); st.balloons(); return True
-    elif amt==4900 or plan=="WEEK49": st.session_state.pro_expiry=now+timedelta(days=7); st.session_state.last_ref=None; st.success("R49 Weekly PRO - 7 days + Batch 50 ✅"); st.balloons(); return True
-    elif amt==9900 or plan=="MONTH99": st.session_state.pro_expiry=now+timedelta(days=30); st.session_state.last_ref=None; st.success("R99 Monthly PRO - 30 days + Batch 50 ✅"); st.balloons(); return True
-    elif amt==79900 or plan=="YEAR799": st.session_state.pro_expiry=now+timedelta(days=365); st.session_state.last_ref=None; st.success("R799 Yearly PRO - 365 days + Batch 50 ✅"); st.balloons(); return True
+    if amt==1000 or plan=="ONCE10": st.session_state.uses=max(0,st.session_state.uses-10); st.success("R10 received! +10 grades ✅"); st.balloons(); return True
+    elif amt==4900 or plan=="WEEK49": st.session_state.pro_expiry=now+timedelta(days=7); st.success("R49 Weekly PRO - 7 days + Batch 50 ✅"); st.balloons(); return True
+    elif amt==9900 or plan=="MONTH99": st.session_state.pro_expiry=now+timedelta(days=30); st.success("R99 Monthly PRO - 30 days + Batch 50 ✅"); st.balloons(); return True
+    elif amt==79900 or plan=="YEAR799": st.session_state.pro_expiry=now+timedelta(days=365); st.success("R799 Yearly PRO - 365 days + Batch 50 ✅"); st.balloons(); return True
     return False
 
+def verify_all_refs():
+    for ref in list(st.session_state.pay_refs.values()):
+        v = verify_paystack(ref)
+        if v.get("status") and v.get("data",{}).get("status")=="success":
+            if unlock_paystack(v):
+                st.session_state.pay_refs = {}
+                st.session_state.pay_links = {}
+                st.query_params.clear()
+                return True
+    return False
+
+# Auto unlock if Paystack returns with?reference=
 q=st.query_params
 if "reference" in q:
-    if unlock(verify_paystack(q["reference"])): st.query_params.clear()
+    if unlock_paystack(verify_paystack(q["reference"])):
+        st.query_params.clear()
+        st.session_state.pay_refs = {}
+        st.session_state.pay_links = {}
+else:
+    if st.session_state.pay_refs:
+        verify_all_refs()
+# --- END PAYSTACK ADDITION ---
 
-def grade_with_groq(essay, lvl):
-    client=Groq(api_key=st.secrets["GROQ_API_KEY"])
-    return client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":f"You are Cambridge TEFL examiner for {lvl}. Grade: {essay}. ASCII only. Include CEFR Level, Score/10 vs Target {lvl}, Summary, 2 Strengths, Table Mistake|Correction|Why, Then corrected version."}]).choices[0].message.content
+def extract_text_from_image(image_bytes):
+    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+    b64 = base64.b64encode(image_bytes).decode('utf-8')
+    try:
+        res = client.chat.completions.create(
+            model="qwen/qwen3.6-27b",
+            messages=[{"role": "user","content": [
+                {"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+            ]}]
+        )
+        txt = res.choices[0].message.content
+        if "</think>" in txt:
+            txt = txt.split("</think>")[-1].strip()
+        return txt.strip()
+    except Exception as e:
+        return f"OCR_ERROR: {e}"
 
-def create_branded_pdf(orig, ai_res, lvl):
-    pdf=FPDF(); pdf.set_auto_page_break(auto=True, margin=15); pdf.add_page()
-    pdf.set_fill_color(17,24,39); pdf.rect(0,0,210,32,'F'); pdf.set_y(7)
-    pdf.set_font("Arial",'B',14); pdf.set_text_color(255,255,255); pdf.cell(0,8,"Mr Mahomed | Essay Grader Report",align='C',ln=True); pdf.ln(10)
-    pdf.set_text_color(0,0,0); pdf.set_font("Arial",'B',11); pdf.cell(0,7,f"Target Level: {lvl} | Date: {datetime.now().strftime('%d %b %Y')}",ln=True); pdf.ln(2)
-    pdf.set_font("Arial",'',10); pdf.multi_cell(0,6,clean(ai_res))
+def extract_text_from_pdf(pdf_bytes):
+    if not fitz:
+        return "Add PyMuPDF to requirements.txt"
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        text = "\n".join([p.get_text() for p in doc[:3]])
+        if len(text.strip()) < 30 and len(doc) > 0:
+            pix = doc[0].get_pixmap(dpi=200)
+            text = extract_text_from_image(pix.tobytes("jpeg"))
+        return text
+    except Exception as e:
+        return f"PDF_ERROR: {e}"
+
+def create_branded_pdf(original_essay, ai_result, target_level):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    pdf.set_fill_color(17, 24, 39)
+    pdf.rect(0, 0, 210, 32, 'F')
+    pdf.set_y(7)
+    pdf.set_font("Arial", 'B', 14)
+    pdf.set_text_color(255,255,255)
+    pdf.cell(0, 8, "Mr Mahomed | Essay Grader Report", align='C', ln=True)
+    pdf.ln(10)
+    pdf.set_text_color(0,0,0)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(0, 7, f"Target Level: {target_level} | Date: {datetime.now().strftime('%d %b %Y')}", ln=True)
+    pdf.ln(2)
+    pdf.set_font("Arial", '', 10)
+    pdf.multi_cell(0, 6, clean(ai_result))
     return pdf.output(dest='S').encode('latin-1')
 
-def extract_text_from_image(b):
-    client=Groq(api_key=st.secrets["GROQ_API_KEY"]); b64=base64.b64encode(b).decode('utf-8')
-    try:
-        res=client.chat.completions.create(model="qwen/qwen3-32b", messages=[{"role":"user","content":[{"type":"text","text":"OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."},{"type":"image_url","image_url":{"url": f"data:image/jpeg;base64,{b64}"}}]}])
-        txt=res.choices[0].message.content
-        if "</think>" in txt: txt=txt.split("</think>")[-1].strip()
-        return txt.strip()
-    except Exception as e: return f"OCR_ERROR: {e}"
+def grade_with_groq(essay_text, level):
+    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+    prompt = f"You are Cambridge TEFL examiner for {level}. Grade: {essay_text}. ASCII only. Include CEFR Level, Score/10 vs Target {level}, Summary, 2 Strengths, Table Mistake|Correction|Why, Then corrected version."
+    res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
+    return res.choices[0].message.content
 
-def extract_text_from_pdf(b):
-    if not fitz: return "Add PyMuPDF"
-    try:
-        doc=fitz.open(stream=b, filetype="pdf"); t="\n".join([p.get_text() for p in doc[:3]])
-        if len(t.strip())<30 and len(doc)>0:
-            pix=doc[0].get_pixmap(dpi=200); t=extract_text_from_image(pix.tobytes("jpeg"))
-        return t
-    except Exception as e: return f"PDF_ERROR: {e}"
-
-# SIDEBAR - NO LOOP
+st.title("📝 TEFLMate v5.1 - Batch Grader")
+st.caption(f"Grade 50 essays in 4 minutes • Pricing in {st.session_state.geo['code']}")
 with st.sidebar:
-    st.markdown("### 🔑 Your Plan"); st.info(get_status()); g=st.session_state.geo
-    if g['code']=="ZAR":
-        st.markdown("#### 🇿🇦 Choose Your Plan")
-        st.caption("1 click → Pay on Paystack → Return here → Click Unlock")
-        email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email")
+    st.markdown("### 🔑 Your Plan")
+    st.info(get_status())
+    g = st.session_state.geo
+    st.markdown(f"#### 💰 Pricing ({g['code']})")
+    st.markdown(f"- FREE: 3 essays")
+    st.markdown(f"- Once-off: {g['symbol']}{g['once']} = +10 grades")
+    st.markdown(f"- Weekly: {g['symbol']}{g['weekly']} = 7 days unlimited")
+    st.markdown(f"- Monthly: {g['symbol']}{g['monthly']} = 30 days unlimited + Batch 50 Tool")
+    st.caption("Batch 50 = Upload CSV and grade 50 essays at once into 1 PDF. For teachers with many books.")
+    st.markdown(f"- Yearly: {g['symbol']}{g['yearly']} = 365 days")
+    st.divider()
 
-        # Create links once
+    # --- PAYSTACK ONE-CLICK ADDED HERE, YOUR ORIGINAL BELOW IT STAYS ---
+    if g['code']=="ZAR":
+        st.markdown("#### 🇿🇦 Pay with Paystack - 1 Click")
+        st.caption("Tap → Pay → Come back → Auto unlocks")
+        email = st.text_input("Email for Paystack receipt:", value=YOUR_EMAIL, key="pay_email_v51")
         if not st.session_state.pay_links and email:
-            with st.spinner("Loading pay options..."):
+            with st.spinner("Loading..."):
                 for plan, amt in [("ONCE10",1000),("WEEK49",4900),("MONTH99",9900),("YEAR799",79900)]:
                     res = init_paystack(email, amt, plan)
                     if res.get("status"):
                         st.session_state.pay_links[plan] = res["data"]["authorization_url"]
                         st.session_state.pay_refs[plan] = res["data"]["reference"]
-
         if st.session_state.pay_links:
-            if "ONCE10" in st.session_state.pay_links:
-                st.link_button("💳 Pay Once R10 - +10 grades (No Batch)", st.session_state.pay_links["ONCE10"], use_container_width=True)
-            if "WEEK49" in st.session_state.pay_links:
-                st.link_button("💳 Pay Weekly R49 - 7 days + Batch 50", st.session_state.pay_links["WEEK49"], use_container_width=True)
-            if "MONTH99" in st.session_state.pay_links:
-                st.link_button("⭐ Pay Monthly R99 - 30 days + Batch 50", st.session_state.pay_links["MONTH99"], use_container_width=True)
-            if "YEAR799" in st.session_state.pay_links:
-                st.link_button("💳 Pay Yearly R799 - 365 days + Batch 50", st.session_state.pay_links["YEAR799"], use_container_width=True)
-
-            # Save last ref based on which link was last generated - user will paste or we use latest
-            # Simplified: store all refs, verify button checks latest
-            if st.session_state.pay_refs:
-                st.session_state.last_ref = list(st.session_state.pay_refs.values())[-1]
-
+            st.link_button("💳 Pay Once R10 - +10 grades (No Batch)", st.session_state.pay_links.get("ONCE10","#"), use_container_width=True)
+            st.link_button("💳 Pay Weekly R49 - 7 days + Batch 50", st.session_state.pay_links.get("WEEK49","#"), use_container_width=True)
+            st.link_button("⭐ Pay Monthly R99 - 30 days + Batch 50", st.session_state.pay_links.get("MONTH99","#"), use_container_width=True)
+            st.link_button("💳 Pay Yearly R799 - 365 days + Batch 50", st.session_state.pay_links.get("YEAR799","#"), use_container_width=True)
             st.write("")
-            # MANUAL VERIFY - NO AUTO LOOP, so page never goes blank
-            st.markdown("---")
-            st.markdown("**After paying on Paystack:**")
-            if st.button("✅ I PAID - Click to Unlock PRO", type="primary", use_container_width=True):
-                if st.session_state.last_ref:
-                    v = verify_paystack(st.session_state.last_ref)
-                    if unlock(v):
-                        st.rerun()
-                    else:
-                        st.warning("Not confirmed yet. Wait 10 sec after Paystack Success, then click again.")
-                        # Optional: allow pasting ref
-                        with st.expander("Paste Paystack Reference"):
-                            ref_input = st.text_input("Reference (e.g. T...)", key="ref_manual")
-                            if st.button("Verify Reference"):
-                                if unlock(verify_paystack(ref_input.strip())):
-                                    st.rerun()
+            if st.button("✅ I PAID - Unlock Now", type="primary", use_container_width=True):
+                if verify_all_refs():
+                    st.rerun()
                 else:
-                    st.warning("No payment found. Click a Pay button first.")
-
-        if st.button("🔄 Refresh Pay Links"):
-            st.session_state.pay_links = {}
-            st.session_state.pay_refs = {}
-            st.session_state.last_ref = None
-            st.rerun()
+                    st.warning("Not yet confirmed. Wait 10 sec after Paystack Success, then click again. Or refresh page - it auto-checks.")
+            if st.button("🔄 Refresh Links"):
+                st.session_state.pay_links={}; st.session_state.pay_refs={}; st.rerun()
         st.divider()
-    st.link_button("🌍 PayPal", PAYPAL_ME)
+    # --- END PAYSTACK, YOUR ORIGINAL CONTINUES ---
+
+    st.markdown("#### 🌍 Pay Globally")
+    st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
+    st.caption(f"PayPal.me/TaahirMahomed\nPay {g['symbol']}{g['once']} / {g['symbol']}{g['weekly']} / {g['symbol']}{g['monthly']} / {g['symbol']}{g['yearly']} - Then send proof")
     st.divider()
-    code=st.text_input("Got a code?", type="password").strip().upper()
+    st.caption("Loved it? Send proof and I'll send your code instantly ❤️")
+    code = st.text_input("Got a code?", placeholder="Paste your code here", type="password").strip().upper()
     if st.button("Unlock Code"):
-        now=datetime.now()
-        m={"TEACH10":lambda:setattr(st.session_state,'uses',max(0,st.session_state.uses-10)),"WEEK49":lambda:setattr(st.session_state,'pro_expiry',now+timedelta(days=7)),"MONTH99":lambda:setattr(st.session_state,'pro_expiry',now+timedelta(days=30)),"YEAR799":lambda:setattr(st.session_state,'pro_expiry',now+timedelta(days=365)),"TEFL2026":lambda:setattr(st.session_state,'pro_expiry',now+timedelta(days=30))}
-        if code in m: m[code](); st.success("Unlocked!"); st.rerun()
-        else: st.error("Bad code")
+        now = datetime.now()
+        code_map = {
+            "TEACH10": lambda: setattr(st.session_state, 'uses', max(0, st.session_state.uses - 10)),
+            "WEEK49": lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=7)),
+            "MONTH99": lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=30)),
+            "YEAR799": lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=365)),
+            "TEFL2026": lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=30)),
+        }
+        if code in code_map:
+            code_map[code]()
+            st.success("Unlocked!")
+            st.rerun()
+        else:
+            st.error("That code didn't work")
 
-# MAIN PAGE - WILL ALWAYS SHOW NOW
-st.title("📝 TEFLMate v5.5.2")
-st.caption("One click to pay - auto unlocks")
-
-tab1,tab2,tab3,tab4=st.tabs(["Single Essay","Batch 50 (PRO)","📸 Photo/PDF","📘 Guide"])
+tab1, tab2, tab3, tab4 = st.tabs(["Single Essay", "Batch 50 (PRO)", "📸 Photo / PDF NEW", "📘 Target Levels Guide"])
 with tab1:
-    essay=st.text_area("Paste Essay:",height=180,placeholder="I broken my leg")
-    lvl=st.selectbox("Target:",["A1","A2","B1","B2","C1","C2"],key="single")
+    essay = st.text_area("Paste Student Essay:", height=180, placeholder="I broken my leg")
+    level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level")
     if st.button("GRADE ESSAY ->"):
-        if not is_pro() and st.session_state.uses>=3: st.error("Free limit - pay in sidebar"); st.stop()
-        with st.spinner("Grading..."): res=grade_with_groq(essay,lvl)
-        if not is_pro(): st.session_state.uses+=1
-        st.markdown(res); st.download_button("📄 PDF",create_branded_pdf(essay,res,lvl),f"Report_{lvl}.pdf")
+        if not is_pro() and st.session_state.uses >= 3:
+            st.error("Free limit reached")
+            st.stop()
+        with st.spinner("Grading..."):
+            result_text = grade_with_groq(essay, level)
+            if not is_pro(): st.session_state.uses += 1
+            st.markdown(result_text)
+            st.download_button("📄 Download PDF", create_branded_pdf(essay, result_text, level), file_name=f"Report_{level}.pdf")
 with tab2:
-    st.markdown("### Upload 50 At Once")
-    st.info("✅ Any PRO plan (Weekly / Monthly / Yearly) unlocks Batch 50 • Once R10 is single grades only")
-    df=pd.DataFrame({"student_name":["S1","S2"],"essay":["I go yesterday.","My friend is Thandi."]})
-    st.download_button("📥 Template",df.to_csv(index=False).encode('utf-8'),"Template.csv","text/csv")
-    lvl2=st.selectbox("Level:",["A1","A2","B1","B2","C1","C2"],key="batch")
-    up=st.file_uploader("Upload CSV/TXT",type=["csv","txt"])
+    st.markdown("### Upload 50 Essays At Once")
+    st.info(f"Monthly {g['symbol']}{g['monthly']} unlocks this: Grade 50 essays at once instead of one by one.")
+    sample_df = pd.DataFrame({
+        "student_name": ["Student 1", "Student 2", "Student 3"],
+        "essay": ["I go to market yesterday. It was very fun because I buyed many things.", "My best friend is Thandi. She is kind and she help me every day.", "I broken my leg last week. I was playing soccer and I fall down."]
+    })
+    csv_template = sample_df.to_csv(index=False).encode('utf-8')
+    st.download_button("📥 Download CSV Template - Fill 50 essays here", csv_template, file_name="TEFLMate_Batch_Template_50.csv", mime="text/csv", key="template_btn")
+    st.caption("1. Download template above 2. Open in Excel/Sheets 3. Replace essays with your 50 students 4. Save and upload below")
+    st.divider()
+    level_b = st.selectbox("Target Level for batch:", ["A1","A2","B1","B2","C1","C2"], key="batch_level")
+    uploaded = st.file_uploader("Upload your filled CSV or TXT", type=["csv","txt"], key="batch_file")
     if st.button("GRADE BATCH 50 ->"):
-        if not is_pro(): st.error("Batch 50 needs any PRO plan (Weekly/Monthly/Yearly)"); st.stop()
-        if not up: st.warning("Upload first"); st.stop()
-        ess=[]
-        if up.name.endswith(".csv"):
-            d=pd.read_csv(up); col="essay" if "essay" in d.columns else d.columns[0]; ess=d[col].dropna().astype(str).tolist()[:50]
-        else: ess=[e.strip() for e in up.read().decode("utf-8",errors="ignore").split("\n") if e.strip()][:50]
-        st.info(f"Grading {len(ess)}..."); results=[]; prog=st.progress(0)
-        for i,e in enumerate(ess): results.append({"Essay":e[:100],"Result":grade_with_groq(e[:2000],lvl2)}); prog.progress((i+1)/len(ess))
-        st.success("Done!"); st.dataframe(pd.DataFrame(results))
+        if not is_pro():
+            st.error(f"Batch 50 needs Monthly PRO {g['symbol']}{g['monthly']}")
+            st.stop()
+        if not uploaded:
+            st.warning("Upload file first")
+            st.stop()
+        essays = []
+        if uploaded.name.endswith(".csv"):
+            df = pd.read_csv(uploaded)
+            col = "essay" if "essay" in df.columns else df.columns[0]
+            essays = df[col].dropna().astype(str).tolist()[:50]
+        else:
+            content = uploaded.read().decode("utf-8", errors="ignore")
+            essays = [e.strip() for e in content.split("\n") if e.strip()][:50]
+        st.info(f"Grading {len(essays)} essays...")
+        results = []; progress = st.progress(0)
+        for i, es in enumerate(essays):
+            results.append({"Essay": es[:100], "Result": grade_with_groq(es[:2000], level_b)})
+            progress.progress((i+1)/len(essays))
+        st.success(f"Done! {len(results)} graded")
+        st.dataframe(pd.DataFrame(results))
+        pdf = FPDF(); pdf.set_auto_page_break(auto=True, margin=15)
+        for idx, r in enumerate(results):
+            pdf.add_page(); pdf.set_font("Arial", 'B', 12); pdf.cell(0, 10, f"Essay {idx+1}", ln=True)
+            pdf.set_font("Arial", '', 10); pdf.multi_cell(0, 6, clean(r["Result"]))
+        st.download_button("📄 Download All 50 Reports PDF", pdf.output(dest='S').encode('latin-1'), file_name="Batch_50.pdf")
 with tab3:
-    st.markdown("### 📸 Photo / PDF"); lvl3=st.selectbox("Level:",["A1","A2","B1","B2","C1","C2"],key="photo")
-    cam=st.camera_input("Take photo"); upI=st.file_uploader("Upload Image",type=["jpg","jpeg","png"],key="img"); upP=st.file_uploader("Upload PDF",type=["pdf"],key="pdf")
-    ib=None
-    if cam: ib=cam.getvalue()
-    elif upI: ib=upI.getvalue()
-    if ib: st.image(ib,use_container_width=True)
-    if upP:
-        ext=extract_text_from_pdf(upP.getvalue()); st.text_area("From PDF:",value=ext,height=150,key="pdf_area")
-        if st.button("GRADE PDF TEXT ->"): r=grade_with_groq(ext,lvl3); st.markdown(r)
-    if ib and st.button("READ & GRADE PHOTO ->"):
-        with st.spinner("Reading..."): ext=extract_text_from_image(ib)
-        if "OCR_ERROR" in ext: st.error(ext)
-        else: st.session_state['last_ocr']=ext; st.rerun()
+    st.markdown("### 📸 Photo or PDF Scan")
+    level_p = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="photo_level")
+    colA, colB = st.columns(2)
+    with colA:
+        camera_pic = st.camera_input("Take photo")
+        upload_img = st.file_uploader("Upload Image", type=["jpg","jpeg","png"], key="img_up")
+    with colB:
+        upload_pdf = st.file_uploader("Upload PDF Scan", type=["pdf"], key="pdf_up")
+    image_bytes = None
+    if camera_pic: image_bytes = camera_pic.getvalue()
+    elif upload_img: image_bytes = upload_img.getvalue()
+    if image_bytes: st.image(image_bytes, use_container_width=True)
+    if upload_pdf:
+        extracted = extract_text_from_pdf(upload_pdf.getvalue())
+        st.text_area("Text from PDF:", value=extracted, height=150, key="pdf_text_area")
+        if st.button("GRADE PDF TEXT ->"):
+            result_text = grade_with_groq(extracted, level_p)
+            if not is_pro(): st.session_state.uses += 1
+            st.markdown(result_text)
+            st.download_button("📄 Download PDF", create_branded_pdf(extracted, result_text, level_p), file_name=f"PDF_{level_p}.pdf")
+    if image_bytes and st.button("READ & GRADE PHOTO ->"):
+        with st.spinner("Reading..."):
+            extracted = extract_text_from_image(image_bytes)
+            if "OCR_ERROR" in extracted: st.error(extracted)
+            else: st.session_state['last_ocr'] = extracted; st.rerun()
     if 'last_ocr' in st.session_state:
-        ed=st.text_area("We read — edit:",value=st.session_state['last_ocr'],height=150)
-        if st.button("GRADE THIS TEXT ->"): r=grade_with_groq(ed,lvl3); st.markdown(r)
+        edited = st.text_area("We read — edit if needed:", value=st.session_state['last_ocr'], height=150)
+        if st.button("GRADE THIS TEXT ->"):
+            result_text = grade_with_groq(edited, level_p)
+            if not is_pro(): st.session_state.uses += 1
+            st.markdown(result_text)
+            st.download_button("📄 Download PDF", create_branded_pdf(edited, result_text, level_p), file_name=f"Photo_{level_p}.pdf")
 with tab4:
-    st.table(pd.DataFrame([{"Level":"A1","Use":"Gr1-3 ABET"},{"Level":"A2","Use":"Gr4-6 Primary"},{"Level":"B1","Use":"Gr7-9 High"},{"Level":"B2","Use":"Matric"},{"Level":"C1","Use":"Uni"},{"Level":"C2","Use":"Teachers"}]))
+    st.markdown("## 📘 How Target Levels Work")
+    st.info("Target Level = The level you WANT them to reach. We grade AGAINST that level.")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.success("**🟢 A1 – Beginner**\n\nGrade 1-3")
+        st.warning("**🟡 B1 – Intermediate**\n\nGrade 7-9")
+        st.error("**🔴 C1 – Advanced**\n\nUniversity")
+    with c2:
+        st.info("**🔵 A2 – Elementary**\n\nGrade 4-6")
+        st.error("**🟠 B2 – Matric**\n\nGrade 10-12")
+        st.markdown("**⚫ C2 – Mastery**\n\nTeacher")
+    st.table(pd.DataFrame([
+        {"Level": "A1", "Class": "Grade 1-3", "Words": "20-40", "Use For": "ABET"},
+        {"Level": "A2", "Class": "Grade 4-6", "Words": "50-80", "Use For": "Primary"},
+        {"Level": "B1", "Class": "Grade 7-9", "Words": "120-150", "Use For": "High school"},
+        {"Level": "B2", "Class": "Matric", "Words": "180-250", "Use For": "Matric, College"},
+        {"Level": "C1", "Class": "University", "Words": "250-300", "Use For": "University, Work"},
+        {"Level": "C2", "Class": "Mastery", "Words": "300+", "Use For": "Teachers"},
+    ]))
+st.divider()
+st.markdown("### ❤️ Payshap 0658006750 | PayPal: paypal.me/TaahirMahomed | Send proof by WhatsApp or Email and I'll send your code")
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.link_button("💬 WhatsApp Proof", "https://wa.me/27658006750?text=Hi%20I%20paid%20for%20TEFLMate")
+with col2:
+    st.link_button(f"📧 Email proof", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
+with col3:
+    st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
+st.caption("TEFLMate v5.1 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
