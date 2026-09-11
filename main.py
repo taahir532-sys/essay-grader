@@ -15,7 +15,7 @@ except ImportError:
 
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
-st.set_page_config(page_title="TEFLMate v6.0 Pro - Phase 2", page_icon="📝", layout="centered")
+st.set_page_config(page_title="TEFLMate v6.0.1 Pro - Phase 2", page_icon="📝", layout="centered")
 st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:10px;height:45px;font-weight:bold;width:100%;} div[data-testid="stLinkButton"]>a{background:#111!important;color:white!important;border-radius:10px!important;height:45px!important;font-weight:bold!important;width:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;}</style>""", unsafe_allow_html=True)
 
 if "uses" not in st.session_state:
@@ -181,7 +181,7 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
-st.title("📝 TEFLMate v6.0 - Phase 2 Classroom")
+st.title("📝 TEFLMate v6.0.1 - Phase 2 Classroom")
 st.caption(f"Grade 50 essays in 4 minutes • Class Reports + Excel • Pricing in {st.session_state.geo['code']}")
 
 with st.sidebar:
@@ -271,15 +271,24 @@ with tab2:
     st.markdown("### 🚀 Phase 2 - Upload 50 Essays At Once (With Student Names)")
     st.info(f"Monthly {g['symbol']}{g['monthly']} unlocks this: Grade 50 essays at once + Class Excel + Named PDFs")
     sample_df = pd.DataFrame({
-        "student_name": ["Thandi Mabaso", "John Smith", "Aisha Khan"],
-        "essay": ["I go to market yesterday. It was very fun because I buyed many things.", "My best friend is Thandi. She is kind and she help me every day.", "I broken my leg last week. I was playing soccer and I fall down."]
+        "student_name": ["Thandi Mabaso", "John Smith", "Aisha Khan", "Lerato Dlamini", "Sipho Nkosi"],
+        "essay": [
+            "I go to market yesterday. It was very fun because I buyed many things.",
+            "My best friend is Thandi. She is kind and she help me every day.",
+            "I broken my leg last week. I was playing soccer and I fall down.",
+            "My mother is the best. She cooks delicious food and she loves me.",
+            "I want to be a doctor when I grow up because I want to help people."
+        ]
     })
-    csv_template = sample_df.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Download CSV Template (with student_name)", csv_template, file_name="TEFLMate_Batch_Template_50_Phase2.csv", mime="text/csv", key="template_btn")
-    st.caption("1. Download template 2. Replace with your 50 students names + essays 3. Upload below")
+    # FIXED: Real Excel file, not CSV
+    output_template = BytesIO()
+    with pd.ExcelWriter(output_template, engine='openpyxl') as writer:
+        sample_df.to_excel(writer, index=False, sheet_name='Essays')
+    st.download_button("📥 Download Excel Template (50 Students) - Proper 2 Columns", output_template.getvalue(), file_name="TEFLMate_Batch_Template_50_Phase2.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="template_btn")
+    st.caption("✅ Opens correctly in Excel with 2 columns: student_name | essay. Add your 50 students and upload below.")
     st.divider()
     level_b = st.selectbox("Target Level for batch:", ["A1","A2","B1","B2","C1","C2"], key="batch_level")
-    uploaded = st.file_uploader("Upload your filled CSV or TXT", type=["csv","txt"], key="batch_file")
+    uploaded = st.file_uploader("Upload your filled Excel or CSV or TXT", type=["csv","txt","xlsx"], key="batch_file")
     if st.button("GRADE BATCH 50 ->"):
         if not is_pro():
             st.error(f"Batch 50 needs PRO {g['symbol']}{g['monthly']}"); st.stop()
@@ -288,6 +297,14 @@ with tab2:
         essays = []; names = []
         if uploaded.name.endswith(".csv"):
             df = pd.read_csv(uploaded)
+            essay_col = "essay" if "essay" in df.columns else df.columns[-1]
+            name_col = "student_name" if "student_name" in df.columns else df.columns[0]
+            essays = df[essay_col].dropna().astype(str).tolist()[:50]
+            names = df[name_col].dropna().astype(str).tolist()[:50]
+            if len(names) < len(essays):
+                names += [f"Student {i+1}" for i in range(len(names), len(essays))]
+        elif uploaded.name.endswith(".xlsx"):
+            df = pd.read_excel(uploaded)
             essay_col = "essay" if "essay" in df.columns else df.columns[-1]
             name_col = "student_name" if "student_name" in df.columns else df.columns[0]
             essays = df[essay_col].dropna().astype(str).tolist()[:50]
@@ -382,4 +399,4 @@ with col2:
     st.link_button(f"📧 Email proof", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
 with col3:
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-st.caption("TEFLMate v6.0 Phase 2 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
+st.caption("TEFLMate v6.0.1 Phase 2 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
