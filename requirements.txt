@@ -5,3 +5,4 @@ pandas
 Pillow
 PyMuPDF
 requests
+openpyxl
