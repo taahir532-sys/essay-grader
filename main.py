@@ -15,7 +15,7 @@ except ImportError:
 
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
-st.set_page_config(page_title="TEFLMate v6.0.1 Pro - Phase 2", page_icon="📝", layout="centered")
+st.set_page_config(page_title="TEFLMate v6.0.2 Pro - Phase 2", page_icon="📝", layout="centered")
 st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:10px;height:45px;font-weight:bold;width:100%;} div[data-testid="stLinkButton"]>a{background:#111!important;color:white!important;border-radius:10px!important;height:45px!important;font-weight:bold!important;width:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;}</style>""", unsafe_allow_html=True)
 
 if "uses" not in st.session_state:
@@ -78,6 +78,17 @@ def extract_score_cefr(text):
         return score, cefr
     except:
         return 0, "N/A"
+
+# --- SAFE EXCEL HELPER: never crashes even if openpyxl missing ---
+def df_to_excel_bytes_safe(df, sheet_name="Sheet1"):
+    try:
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name=sheet_name)
+        return output.getvalue(), "xlsx"
+    except Exception:
+        # fallback to csv if openpyxl not installed
+        return df.to_csv(index=False).encode('utf-8'), "csv"
 
 def init_paystack(email, amount_kobo, plan_code):
     try:
@@ -181,7 +192,7 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
-st.title("📝 TEFLMate v6.0.1 - Phase 2 Classroom")
+st.title("📝 TEFLMate v6.0.2 - Phase 2 Classroom")
 st.caption(f"Grade 50 essays in 4 minutes • Class Reports + Excel • Pricing in {st.session_state.geo['code']}")
 
 with st.sidebar:
@@ -280,12 +291,14 @@ with tab2:
             "I want to be a doctor when I grow up because I want to help people."
         ]
     })
-    # FIXED: Real Excel file, not CSV
-    output_template = BytesIO()
-    with pd.ExcelWriter(output_template, engine='openpyxl') as writer:
-        sample_df.to_excel(writer, index=False, sheet_name='Essays')
-    st.download_button("📥 Download Excel Template (50 Students) - Proper 2 Columns", output_template.getvalue(), file_name="TEFLMate_Batch_Template_50_Phase2.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="template_btn")
-    st.caption("✅ Opens correctly in Excel with 2 columns: student_name | essay. Add your 50 students and upload below.")
+    # SAFE: Excel if possible, else CSV fallback - never crashes
+    template_bytes, template_type = df_to_excel_bytes_safe(sample_df, "Essays")
+    if template_type == "xlsx":
+        st.download_button("📥 Download Excel Template (50 Students) - Proper 2 Columns", template_bytes, file_name="TEFLMate_Batch_Template_50_Phase2.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="template_btn")
+    else:
+        st.warning("Add openpyxl to requirements.txt to get Excel template. Showing CSV for now.")
+        st.download_button("📥 Download CSV Template (Add openpyxl for Excel)", template_bytes, file_name="TEFLMate_Batch_Template_50_Phase2.csv", mime="text/csv", key="template_btn")
+    st.caption("✅ Fill 2 columns: student_name | essay. Add your 50 students and upload below.")
     st.divider()
     level_b = st.selectbox("Target Level for batch:", ["A1","A2","B1","B2","C1","C2"], key="batch_level")
     uploaded = st.file_uploader("Upload your filled Excel or CSV or TXT", type=["csv","txt","xlsx"], key="batch_file")
@@ -295,26 +308,33 @@ with tab2:
         if not uploaded:
             st.warning("Upload file first"); st.stop()
         essays = []; names = []
-        if uploaded.name.endswith(".csv"):
-            df = pd.read_csv(uploaded)
-            essay_col = "essay" if "essay" in df.columns else df.columns[-1]
-            name_col = "student_name" if "student_name" in df.columns else df.columns[0]
-            essays = df[essay_col].dropna().astype(str).tolist()[:50]
-            names = df[name_col].dropna().astype(str).tolist()[:50]
-            if len(names) < len(essays):
-                names += [f"Student {i+1}" for i in range(len(names), len(essays))]
-        elif uploaded.name.endswith(".xlsx"):
-            df = pd.read_excel(uploaded)
-            essay_col = "essay" if "essay" in df.columns else df.columns[-1]
-            name_col = "student_name" if "student_name" in df.columns else df.columns[0]
-            essays = df[essay_col].dropna().astype(str).tolist()[:50]
-            names = df[name_col].dropna().astype(str).tolist()[:50]
-            if len(names) < len(essays):
-                names += [f"Student {i+1}" for i in range(len(names), len(essays))]
-        else:
-            content = uploaded.read().decode("utf-8", errors="ignore")
-            essays = [e.strip() for e in content.split("\n") if e.strip()][:50]
-            names = [f"Student {i+1}" for i in range(len(essays))]
+        try:
+            if uploaded.name.endswith(".csv"):
+                df = pd.read_csv(uploaded)
+                essay_col = "essay" if "essay" in df.columns else df.columns[-1]
+                name_col = "student_name" if "student_name" in df.columns else df.columns[0]
+                essays = df[essay_col].dropna().astype(str).tolist()[:50]
+                names = df[name_col].dropna().astype(str).tolist()[:50]
+                if len(names) < len(essays):
+                    names += [f"Student {i+1}" for i in range(len(names), len(essays))]
+            elif uploaded.name.endswith(".xlsx"):
+                try:
+                    df = pd.read_excel(uploaded)
+                except Exception as e:
+                    st.error(f"Excel needs openpyxl. Add 'openpyxl' to requirements.txt. Error: {e}")
+                    st.stop()
+                essay_col = "essay" if "essay" in df.columns else df.columns[-1]
+                name_col = "student_name" if "student_name" in df.columns else df.columns[0]
+                essays = df[essay_col].dropna().astype(str).tolist()[:50]
+                names = df[name_col].dropna().astype(str).tolist()[:50]
+                if len(names) < len(essays):
+                    names += [f"Student {i+1}" for i in range(len(names), len(essays))]
+            else:
+                content = uploaded.read().decode("utf-8", errors="ignore")
+                essays = [e.strip() for e in content.split("\n") if e.strip()][:50]
+                names = [f"Student {i+1}" for i in range(len(essays))]
+        except Exception as e:
+            st.error(f"Could not read file: {e}"); st.stop()
         st.info(f"Grading {len(essays)} essays...")
         results = []; excel_rows = []; progress = st.progress(0)
         for i, es in enumerate(essays):
@@ -336,10 +356,12 @@ with tab2:
             c3.metric("Top Student", f"{best['Student Name']} ({best['Score /10']}/10)")
             st.caption(f"Weakest: {worst['Student Name']} ({worst['Score /10']}/10) - Needs support")
         st.dataframe(df_res)
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            pd.DataFrame(excel_rows).to_excel(writer, index=False, sheet_name='Grades')
-        st.download_button("📊 Download Class Grades Excel (For School)", output.getvalue(), file_name=f"Class_Grades_{level_b}_{datetime.now().strftime('%Y%m%d')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        grades_df = pd.DataFrame(excel_rows)
+        grades_bytes, grades_type = df_to_excel_bytes_safe(grades_df, "Grades")
+        if grades_type == "xlsx":
+            st.download_button("📊 Download Class Grades Excel (For School)", grades_bytes, file_name=f"Class_Grades_{level_b}_{datetime.now().strftime('%Y%m%d')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        else:
+            st.download_button("📊 Download Class Grades CSV (For School)", grades_bytes, file_name=f"Class_Grades_{level_b}_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv")
         pdf = FPDF(); pdf.set_auto_page_break(auto=True, margin=15)
         for idx, r in enumerate(results):
             pdf.add_page(); pdf.set_font("Arial", 'B', 12); pdf.cell(0, 10, f"{r['Student']} - {r['Score']} - {r['CEFR']}", ln=True)
@@ -399,4 +421,4 @@ with col2:
     st.link_button(f"📧 Email proof", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
 with col3:
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-st.caption("TEFLMate v6.0.1 Phase 2 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
+st.caption("TEFLMate v6.0.2 Phase 2 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
