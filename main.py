@@ -54,7 +54,6 @@ def clean(text):
 def extract_text_from_image(image_bytes):
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
     b64 = base64.b64encode(image_bytes).decode('utf-8')
-    # Try all vision models that work on free Groq keys
     models_to_try = [
         "llama-3.2-90b-vision-preview",
         "llama-3.2-11b-vision-preview",
