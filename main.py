@@ -6,7 +6,6 @@ import unicodedata
 import pandas as pd
 import base64
 import requests
-
 try:
     import fitz
 except ImportError:
@@ -14,9 +13,7 @@ except ImportError:
 
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
-
 st.set_page_config(page_title="TEFLMate v5.1 Pro", page_icon="📝", layout="centered")
-
 st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:10px;height:45px;font-weight:bold;width:100%;}</style>""", unsafe_allow_html=True)
 
 if "uses" not in st.session_state:
@@ -40,41 +37,32 @@ if "geo" not in st.session_state:
 
 def is_pro():
     return st.session_state.pro_expiry is not None and datetime.now() < st.session_state.pro_expiry
-
 def get_status():
     if is_pro():
         days = (st.session_state.pro_expiry - datetime.now()).days
         return f"PRO ACTIVE - {days+1} days left"
     else:
         return f"FREE - {3 - st.session_state.uses} left"
-
 def clean(text):
     return unicodedata.normalize('NFKD', text or "").encode('ascii', 'ignore').decode('ascii')
 
 def extract_text_from_image(image_bytes):
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
     b64 = base64.b64encode(image_bytes).decode('utf-8')
-    models_to_try = [
-        "llama-3.2-90b-vision-preview",
-        "llama-3.2-11b-vision-preview",
-        "meta-llama/llama-4-maverick-17b-128e-instruct",
-        "meta-llama/llama-4-scout-17b-16e-instruct"
-    ]
-    last_err = ""
-    for model_id in models_to_try:
-        try:
-            res = client.chat.completions.create(
-                model=model_id,
-                messages=[{"role": "user","content": [
-                    {"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
-                ]}]
-            )
-            return res.choices[0].message.content.strip()
-        except Exception as e:
-            last_err = str(e)
-            continue
-    return f"OCR_ERROR: {last_err}"
+    try:
+        res = client.chat.completions.create(
+            model="qwen/qwen3.6-27b",
+            messages=[{"role": "user","content": [
+                {"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+            ]}]
+        )
+        txt = res.choices[0].message.content
+        if "</think>" in txt:
+            txt = txt.split("</think>")[-1].strip()
+        return txt.strip()
+    except Exception as e:
+        return f"OCR_ERROR: {e}"
 
 def extract_text_from_pdf(pdf_bytes):
     if not fitz:
@@ -116,7 +104,6 @@ def grade_with_groq(essay_text, level):
 
 st.title("📝 TEFLMate v5.1 - Batch Grader")
 st.caption(f"Grade 50 essays in 4 minutes • Pricing in {st.session_state.geo['code']}")
-
 with st.sidebar:
     st.markdown("### 🔑 Your Plan")
     st.info(get_status())
@@ -152,7 +139,6 @@ with st.sidebar:
             st.error("That code didn't work")
 
 tab1, tab2, tab3, tab4 = st.tabs(["Single Essay", "Batch 50 (PRO)", "📸 Photo / PDF NEW", "📘 Target Levels Guide"])
-
 with tab1:
     essay = st.text_area("Paste Student Essay:", height=180, placeholder="I broken my leg")
     level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level")
@@ -165,7 +151,6 @@ with tab1:
             if not is_pro(): st.session_state.uses += 1
             st.markdown(result_text)
             st.download_button("📄 Download PDF", create_branded_pdf(essay, result_text, level), file_name=f"Report_{level}.pdf")
-
 with tab2:
     st.markdown("### Upload 50 Essays At Once")
     st.info(f"Monthly {g['symbol']}{g['monthly']} unlocks this: Grade 50 essays at once instead of one by one.")
@@ -206,7 +191,6 @@ with tab2:
             pdf.add_page(); pdf.set_font("Arial", 'B', 12); pdf.cell(0, 10, f"Essay {idx+1}", ln=True)
             pdf.set_font("Arial", '', 10); pdf.multi_cell(0, 6, clean(r["Result"]))
         st.download_button("📄 Download All 50 Reports PDF", pdf.output(dest='S').encode('latin-1'), file_name="Batch_50.pdf")
-
 with tab3:
     st.markdown("### 📸 Photo or PDF Scan")
     level_p = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="photo_level")
@@ -240,22 +224,18 @@ with tab3:
             if not is_pro(): st.session_state.uses += 1
             st.markdown(result_text)
             st.download_button("📄 Download PDF", create_branded_pdf(edited, result_text, level_p), file_name=f"Photo_{level_p}.pdf")
-
 with tab4:
     st.markdown("## 📘 How Target Levels Work")
     st.info("Target Level = The level you WANT them to reach. We grade AGAINST that level.")
-    st.markdown("### 🎯 Choose Like This")
     c1, c2 = st.columns(2)
     with c1:
-        st.success("**🟢 A1 – Beginner**\n\nGrade 1-3\n\n*I am happy...*\n\nChecks: Capitals, full stop")
-        st.warning("**🟡 B1 – Intermediate**\n\nGrade 7-9\n\n*120 words, however*\n\nChecks: Paragraphs")
-        st.error("**🔴 C1 – Advanced**\n\nUniversity\n\n*250 words academic*")
+        st.success("**🟢 A1 – Beginner**\n\nGrade 1-3")
+        st.warning("**🟡 B1 – Intermediate**\n\nGrade 7-9")
+        st.error("**🔴 C1 – Advanced**\n\nUniversity")
     with c2:
-        st.info("**🔵 A2 – Elementary**\n\nGrade 4-6\n\n*Yesterday I went...*\n\nChecks: Past tense")
-        st.error("**🟠 B2 – Matric**\n\nGrade 10-12, IELTS 5.5\n\n*200 words argument*")
-        st.markdown("**⚫ C2 – Mastery**\n\nTeacher / IELTS 8+\n\n*Near native*")
-    st.markdown("---")
-    st.markdown("💡 If student is A2 but you want B1, **PICK B1**. Report shows GAP.")
+        st.info("**🔵 A2 – Elementary**\n\nGrade 4-6")
+        st.error("**🟠 B2 – Matric**\n\nGrade 10-12")
+        st.markdown("**⚫ C2 – Mastery**\n\nTeacher")
     st.table(pd.DataFrame([
         {"Level": "A1", "Class": "Grade 1-3", "Words": "20-40", "Use For": "ABET"},
         {"Level": "A2", "Class": "Grade 4-6", "Words": "50-80", "Use For": "Primary"},
@@ -264,7 +244,6 @@ with tab4:
         {"Level": "C1", "Class": "University", "Words": "250-300", "Use For": "University, Work"},
         {"Level": "C2", "Class": "Mastery", "Words": "300+", "Use For": "Teachers"},
     ]))
-
 st.divider()
 st.markdown("### ❤️ Payshap 0658006750 | PayPal: paypal.me/TaahirMahomed | Send proof by WhatsApp or Email and I'll send your code")
 col1, col2, col3 = st.columns(3)
