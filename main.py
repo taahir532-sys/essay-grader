@@ -6,6 +6,8 @@ import unicodedata
 import pandas as pd
 import base64
 import requests
+import re
+from io import BytesIO
 try:
     import fitz
 except ImportError:
@@ -13,7 +15,7 @@ except ImportError:
 
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
-st.set_page_config(page_title="TEFLMate v5.1 Pro", page_icon="📝", layout="centered")
+st.set_page_config(page_title="TEFLMate v6.0 Pro - Phase 2", page_icon="📝", layout="centered")
 st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:10px;height:45px;font-weight:bold;width:100%;} div[data-testid="stLinkButton"]>a{background:#111!important;color:white!important;border-radius:10px!important;height:45px!important;font-weight:bold!important;width:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;}</style>""", unsafe_allow_html=True)
 
 if "uses" not in st.session_state:
@@ -67,6 +69,16 @@ def get_status():
 def clean(text):
     return unicodedata.normalize('NFKD', text or "").encode('ascii', 'ignore').decode('ascii')
 
+def extract_score_cefr(text):
+    try:
+        score_match = re.search(r'(\d+)\s*/\s*10', text)
+        score = int(score_match.group(1)) if score_match else 0
+        cefr_match = re.search(r'\b(A1|A2|B1|B2|C1|C2)\b', text)
+        cefr = cefr_match.group(1) if cefr_match else "N/A"
+        return score, cefr
+    except:
+        return 0, "N/A"
+
 def init_paystack(email, amount_kobo, plan_code):
     try:
         secret = st.secrets["PAYSTACK_SECRET_KEY"]
@@ -91,8 +103,7 @@ def unlock_paystack(v):
     if d.get("status")!="success": return False
     amt=d.get("amount",0); plan=d.get("metadata",{}).get("plan",""); now=datetime.now()
     if amt==1000 or plan=="ONCE10":
-        st.session_state.uses -= 10
-        st.session_state.active_plan = "ONCE10"
+        st.session_state.uses -= 10; st.session_state.active_plan = "ONCE10"
         st.success(f"R10 received! You now have {3 - st.session_state.uses} essays left ✅"); st.balloons(); return True
     elif amt==4900 or plan=="WEEK49":
         st.session_state.pro_expiry=now+timedelta(days=7); st.session_state.active_plan="WEEK49"
@@ -110,18 +121,14 @@ def verify_all_refs():
         v = verify_paystack(ref)
         if v.get("status") and v.get("data",{}).get("status")=="success":
             if unlock_paystack(v):
-                st.session_state.pay_refs = {}
-                st.session_state.pay_links = {}
-                st.query_params.clear()
+                st.session_state.pay_refs = {}; st.session_state.pay_links = {}; st.query_params.clear()
                 return True
     return False
 
 q=st.query_params
 if "reference" in q:
     if unlock_paystack(verify_paystack(q["reference"])):
-        st.query_params.clear()
-        st.session_state.pay_refs = {}
-        st.session_state.pay_links = {}
+        st.query_params.clear(); st.session_state.pay_refs = {}; st.session_state.pay_links = {}
 else:
     if st.session_state.pay_refs:
         verify_all_refs()
@@ -130,23 +137,15 @@ def extract_text_from_image(image_bytes):
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
     b64 = base64.b64encode(image_bytes).decode('utf-8')
     try:
-        res = client.chat.completions.create(
-            model="qwen/qwen3.6-27b",
-            messages=[{"role": "user","content": [
-                {"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
-            ]}]
-        )
+        res = client.chat.completions.create(model="qwen/qwen3.6-27b", messages=[{"role": "user","content": [{"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]}])
         txt = res.choices[0].message.content
-        if "</think>" in txt:
-            txt = txt.split("</think>")[-1].strip()
+        if "</think>" in txt: txt = txt.split("</think>")[-1].strip()
         return txt.strip()
     except Exception as e:
         return f"OCR_ERROR: {e}"
 
 def extract_text_from_pdf(pdf_bytes):
-    if not fitz:
-        return "Add PyMuPDF to requirements.txt"
+    if not fitz: return "Add PyMuPDF to requirements.txt"
     try:
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         text = "\n".join([p.get_text() for p in doc[:3]])
@@ -157,7 +156,7 @@ def extract_text_from_pdf(pdf_bytes):
     except Exception as e:
         return f"PDF_ERROR: {e}"
 
-def create_branded_pdf(original_essay, ai_result, target_level):
+def create_branded_pdf(original_essay, ai_result, target_level, student_name="Student"):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
@@ -170,7 +169,7 @@ def create_branded_pdf(original_essay, ai_result, target_level):
     pdf.ln(10)
     pdf.set_text_color(0,0,0)
     pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 7, f"Target Level: {target_level} | Date: {datetime.now().strftime('%d %b %Y')}", ln=True)
+    pdf.cell(0, 7, f"Student: {student_name} | Level: {target_level} | Date: {datetime.now().strftime('%d %b %Y')}", ln=True)
     pdf.ln(2)
     pdf.set_font("Arial", '', 10)
     pdf.multi_cell(0, 6, clean(ai_result))
@@ -182,8 +181,8 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
-st.title("📝 TEFLMate v5.1 - Batch Grader")
-st.caption(f"Grade 50 essays in 4 minutes • Pricing in {st.session_state.geo['code']}")
+st.title("📝 TEFLMate v6.0 - Phase 2 Classroom")
+st.caption(f"Grade 50 essays in 4 minutes • Class Reports + Excel • Pricing in {st.session_state.geo['code']}")
 
 with st.sidebar:
     st.markdown("### 🔑 Your Plan")
@@ -191,29 +190,16 @@ with st.sidebar:
     if is_pro() or (st.session_state.active_plan == "ONCE10"):
         with st.expander("📦 Your Active Package Details", expanded=True):
             if st.session_state.active_plan == "ONCE10":
-                st.write(f"**Amount:** R10 Once-off")
-                st.write(f"**Essays:** {3 - st.session_state.uses} left")
-                st.write(f"**Days:** No expiry, uses only")
-                st.write(f"**Batch 50:** ❌ No")
+                st.write(f"**Amount:** R10 Once-off"); st.write(f"**Essays:** {3 - st.session_state.uses} left"); st.write(f"**Days:** No expiry"); st.write(f"**Batch 50:** ❌ No")
             elif st.session_state.active_plan == "WEEK49":
                 days = (st.session_state.pro_expiry - datetime.now()).days + 1
-                st.write(f"**Amount:** R49 Weekly")
-                st.write(f"**Essays:** Unlimited")
-                st.write(f"**Days:** {days} days left")
-                st.write(f"**Batch 50:** ✅ Yes")
+                st.write(f"**Amount:** R49 Weekly"); st.write(f"**Essays:** Unlimited"); st.write(f"**Days:** {days} days left"); st.write(f"**Batch 50:** ✅ Yes")
             elif st.session_state.active_plan == "MONTH99":
                 days = (st.session_state.pro_expiry - datetime.now()).days + 1
-                st.write(f"**Amount:** R99 Monthly")
-                st.write(f"**Essays:** Unlimited")
-                st.write(f"**Days:** {days} days left")
-                st.write(f"**Batch 50:** ✅ Yes")
+                st.write(f"**Amount:** R99 Monthly"); st.write(f"**Essays:** Unlimited"); st.write(f"**Days:** {days} days left"); st.write(f"**Batch 50:** ✅ Yes")
             elif st.session_state.active_plan == "YEAR799":
                 days = (st.session_state.pro_expiry - datetime.now()).days + 1
-                st.write(f"**Amount:** R799 Yearly")
-                st.write(f"**Essays:** Unlimited")
-                st.write(f"**Days:** {days} days left")
-                st.write(f"**Batch 50:** ✅ Yes")
-
+                st.write(f"**Amount:** R799 Yearly"); st.write(f"**Essays:** Unlimited"); st.write(f"**Days:** {days} days left"); st.write(f"**Batch 50:** ✅ Yes")
     g = st.session_state.geo
     if g['code'] == "ZAR":
         st.markdown(f"#### 💰 1-Click Pay ({g['code']})")
@@ -232,7 +218,6 @@ with st.sidebar:
             st.link_button("⭐ Pay Monthly R99 - 30 days - Unlimited + Batch 50", st.session_state.pay_links.get("MONTH99","#"), use_container_width=True)
             st.link_button("💳 Pay Yearly R799 - 365 days - Unlimited + Batch 50", st.session_state.pay_links.get("YEAR799","#"), use_container_width=True)
             st.write("")
-            # FINAL FIX: Hide Check Payment if already active
             if is_pro() or (st.session_state.active_plan == "ONCE10" and (3 - st.session_state.uses) > 3):
                 st.success("✅ Your plan is already active — no need to check again")
             else:
@@ -248,18 +233,15 @@ with st.sidebar:
         st.markdown(f"- Weekly: {g['symbol']}{g['weekly']} = 7 days unlimited + Batch 50")
         st.markdown(f"- Monthly: {g['symbol']}{g['monthly']} = 30 days unlimited + Batch 50 Tool")
         st.markdown(f"- Yearly: {g['symbol']}{g['yearly']} = 365 days unlimited + Batch 50")
-
     st.divider()
     st.markdown("#### 🌍 Pay Globally")
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-    st.caption(f"PayPal.me/TaahirMahomed")
     st.divider()
     st.caption("Loved it? Send proof and I'll send your code instantly ❤️")
     code = st.text_input("Got a code?", placeholder="Paste your code here", type="password").strip().upper()
     if st.button("Unlock Code"):
         now = datetime.now()
-        def set_plan(p):
-            st.session_state.active_plan = p
+        def set_plan(p): st.session_state.active_plan = p
         code_map = {
             "TEACH10": lambda: (setattr(st.session_state, 'uses', st.session_state.uses - 10), set_plan("ONCE10")),
             "WEEK49": lambda: (setattr(st.session_state, 'pro_expiry', now + timedelta(days=7)), set_plan("WEEK49")),
@@ -268,65 +250,85 @@ with st.sidebar:
             "TEFL2026": lambda: (setattr(st.session_state, 'pro_expiry', now + timedelta(days=30)), set_plan("MONTH99")),
         }
         if code in code_map:
-            code_map[code]()
-            st.success("Unlocked!")
-            st.rerun()
+            code_map[code](); st.success("Unlocked!"); st.rerun()
         else:
             st.error("That code didn't work")
 
-tab1, tab2, tab3, tab4 = st.tabs(["Single Essay", "Batch 50 (PRO)", "📸 Photo / PDF NEW", "📘 Target Levels Guide"])
+tab1, tab2, tab3, tab4 = st.tabs(["Single Essay", "Batch 50 PRO (Phase 2)", "📸 Photo / PDF", "📘 Guide"])
 with tab1:
     essay = st.text_area("Paste Student Essay:", height=180, placeholder="I broken my leg")
     level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level")
     if st.button("GRADE ESSAY ->"):
         if not is_pro() and st.session_state.uses >= 3:
-            st.error("Free limit reached")
-            st.stop()
+            st.error("Free limit reached"); st.stop()
         with st.spinner("Grading..."):
             result_text = grade_with_groq(essay, level)
             if not is_pro(): st.session_state.uses += 1
             st.markdown(result_text)
-            st.download_button("📄 Download PDF", create_branded_pdf(essay, result_text, level), file_name=f"Report_{level}.pdf")
+            st.download_button("📄 Download PDF", create_branded_pdf(essay, result_text, level, "Student"), file_name=f"Report_{level}.pdf")
+
 with tab2:
-    st.markdown("### Upload 50 Essays At Once")
-    st.info(f"Monthly {g['symbol']}{g['monthly']} unlocks this: Grade 50 essays at once instead of one by one.")
+    st.markdown("### 🚀 Phase 2 - Upload 50 Essays At Once (With Student Names)")
+    st.info(f"Monthly {g['symbol']}{g['monthly']} unlocks this: Grade 50 essays at once + Class Excel + Named PDFs")
     sample_df = pd.DataFrame({
-        "student_name": ["Student 1", "Student 2", "Student 3"],
+        "student_name": ["Thandi Mabaso", "John Smith", "Aisha Khan"],
         "essay": ["I go to market yesterday. It was very fun because I buyed many things.", "My best friend is Thandi. She is kind and she help me every day.", "I broken my leg last week. I was playing soccer and I fall down."]
     })
     csv_template = sample_df.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Download CSV Template - Fill 50 essays here", csv_template, file_name="TEFLMate_Batch_Template_50.csv", mime="text/csv", key="template_btn")
-    st.caption("1. Download template above 2. Open in Excel/Sheets 3. Replace essays with your 50 students 4. Save and upload below")
+    st.download_button("📥 Download CSV Template (with student_name)", csv_template, file_name="TEFLMate_Batch_Template_50_Phase2.csv", mime="text/csv", key="template_btn")
+    st.caption("1. Download template 2. Replace with your 50 students names + essays 3. Upload below")
     st.divider()
     level_b = st.selectbox("Target Level for batch:", ["A1","A2","B1","B2","C1","C2"], key="batch_level")
     uploaded = st.file_uploader("Upload your filled CSV or TXT", type=["csv","txt"], key="batch_file")
     if st.button("GRADE BATCH 50 ->"):
         if not is_pro():
-            st.error(f"Batch 50 needs Monthly PRO {g['symbol']}{g['monthly']}")
-            st.stop()
+            st.error(f"Batch 50 needs PRO {g['symbol']}{g['monthly']}"); st.stop()
         if not uploaded:
-            st.warning("Upload file first")
-            st.stop()
-        essays = []
+            st.warning("Upload file first"); st.stop()
+        essays = []; names = []
         if uploaded.name.endswith(".csv"):
             df = pd.read_csv(uploaded)
-            col = "essay" if "essay" in df.columns else df.columns[0]
-            essays = df[col].dropna().astype(str).tolist()[:50]
+            essay_col = "essay" if "essay" in df.columns else df.columns[-1]
+            name_col = "student_name" if "student_name" in df.columns else df.columns[0]
+            essays = df[essay_col].dropna().astype(str).tolist()[:50]
+            names = df[name_col].dropna().astype(str).tolist()[:50]
+            if len(names) < len(essays):
+                names += [f"Student {i+1}" for i in range(len(names), len(essays))]
         else:
             content = uploaded.read().decode("utf-8", errors="ignore")
             essays = [e.strip() for e in content.split("\n") if e.strip()][:50]
+            names = [f"Student {i+1}" for i in range(len(essays))]
         st.info(f"Grading {len(essays)} essays...")
-        results = []; progress = st.progress(0)
+        results = []; excel_rows = []; progress = st.progress(0)
         for i, es in enumerate(essays):
-            results.append({"Essay": es[:100], "Result": grade_with_groq(es[:2000], level_b)})
+            res_text = grade_with_groq(es[:2000], level_b)
+            score, cefr = extract_score_cefr(res_text)
+            results.append({"Student": names[i], "Essay": es[:100], "Score": f"{score}/10", "CEFR": cefr, "Result": res_text})
+            excel_rows.append({"Student Name": names[i], "Score /10": score, "CEFR": cefr, "Essay Preview": es[:200], "Full Feedback": res_text[:1000]})
             progress.progress((i+1)/len(essays))
         st.success(f"Done! {len(results)} graded")
-        st.dataframe(pd.DataFrame(results))
+        df_res = pd.DataFrame(results)
+        avg_score = sum([r["Score /10"] if isinstance(r["Score /10"], int) else 0 for r in excel_rows]) / len(excel_rows) if excel_rows else 0
+        st.markdown("### 📊 Class Dashboard - Phase 2")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Average Score", f"{avg_score:.1f} /10")
+        c2.metric("Total Graded", f"{len(results)}")
+        if excel_rows:
+            best = max(excel_rows, key=lambda x: x["Score /10"])
+            worst = min(excel_rows, key=lambda x: x["Score /10"])
+            c3.metric("Top Student", f"{best['Student Name']} ({best['Score /10']}/10)")
+            st.caption(f"Weakest: {worst['Student Name']} ({worst['Score /10']}/10) - Needs support")
+        st.dataframe(df_res)
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            pd.DataFrame(excel_rows).to_excel(writer, index=False, sheet_name='Grades')
+        st.download_button("📊 Download Class Grades Excel (For School)", output.getvalue(), file_name=f"Class_Grades_{level_b}_{datetime.now().strftime('%Y%m%d')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         pdf = FPDF(); pdf.set_auto_page_break(auto=True, margin=15)
         for idx, r in enumerate(results):
-            pdf.add_page(); pdf.set_font("Arial", 'B', 12); pdf.cell(0, 10, f"Essay {idx+1}", ln=True)
+            pdf.add_page(); pdf.set_font("Arial", 'B', 12); pdf.cell(0, 10, f"{r['Student']} - {r['Score']} - {r['CEFR']}", ln=True)
             pdf.set_font("Arial", '', 10); pdf.multi_cell(0, 6, clean(r["Result"]))
-        st.download_button("📄 Download All 50 Reports PDF", pdf.output(dest='S').encode('latin-1'), file_name="Batch_50.pdf")
+        st.download_button("📄 Download All 50 Named Reports PDF", pdf.output(dest='S').encode('latin-1'), file_name=f"Batch_50_Named_{level_b}.pdf")
+
 with tab3:
     st.markdown("### 📸 Photo or PDF Scan")
     level_p = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="photo_level")
@@ -347,7 +349,7 @@ with tab3:
             result_text = grade_with_groq(extracted, level_p)
             if not is_pro(): st.session_state.uses += 1
             st.markdown(result_text)
-            st.download_button("📄 Download PDF", create_branded_pdf(extracted, result_text, level_p), file_name=f"PDF_{level_p}.pdf")
+            st.download_button("📄 Download PDF", create_branded_pdf(extracted, result_text, level_p, "PDF Student"), file_name=f"PDF_{level_p}.pdf")
     if image_bytes and st.button("READ & GRADE PHOTO ->"):
         with st.spinner("Reading..."):
             extracted = extract_text_from_image(image_bytes)
@@ -359,19 +361,10 @@ with tab3:
             result_text = grade_with_groq(edited, level_p)
             if not is_pro(): st.session_state.uses += 1
             st.markdown(result_text)
-            st.download_button("📄 Download PDF", create_branded_pdf(edited, result_text, level_p), file_name=f"Photo_{level_p}.pdf")
+            st.download_button("📄 Download PDF", create_branded_pdf(edited, result_text, level_p, "Photo Student"), file_name=f"Photo_{level_p}.pdf")
 with tab4:
     st.markdown("## 📘 How Target Levels Work")
     st.info("Target Level = The level you WANT them to reach. We grade AGAINST that level.")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.success("**🟢 A1 – Beginner**\n\nGrade 1-3")
-        st.warning("**🟡 B1 – Intermediate**\n\nGrade 7-9")
-        st.error("**🔴 C1 – Advanced**\n\nUniversity")
-    with c2:
-        st.info("**🔵 A2 – Elementary**\n\nGrade 4-6")
-        st.error("**🟠 B2 – Matric**\n\nGrade 10-12")
-        st.markdown("**⚫ C2 – Mastery**\n\nTeacher")
     st.table(pd.DataFrame([
         {"Level": "A1", "Class": "Grade 1-3", "Words": "20-40", "Use For": "ABET"},
         {"Level": "A2", "Class": "Grade 4-6", "Words": "50-80", "Use For": "Primary"},
@@ -389,4 +382,4 @@ with col2:
     st.link_button(f"📧 Email proof", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
 with col3:
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-st.caption("TEFLMate v5.1 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
+st.caption("TEFLMate v6.0 Phase 2 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
