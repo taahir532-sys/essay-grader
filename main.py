@@ -46,6 +46,33 @@ def get_status():
 def clean(text):
     return unicodedata.normalize('NFKD', text or "").encode('ascii', 'ignore').decode('ascii')
 
+# --- PAYSTACK 4 OPTIONS ---
+def init_paystack(email, amount_kobo, plan_code):
+    try:
+        secret = st.secrets["PAYSTACK_SECRET_KEY"]
+        url = "https://api.paystack.co/transaction/initialize"
+        headers = {"Authorization": f"Bearer {secret}", "Content-Type": "application/json"}
+        data = {
+            "email": email,
+            "amount": int(amount_kobo),
+            "metadata": {"plan": plan_code}
+        }
+        r = requests.post(url, json=data, headers=headers, timeout=10)
+        return r.json()
+    except Exception as e:
+        return {"status": False, "message": str(e)}
+
+def verify_paystack(reference):
+    try:
+        secret = st.secrets["PAYSTACK_SECRET_KEY"]
+        url = f"https://api.paystack.co/transaction/verify/{reference}"
+        headers = {"Authorization": f"Bearer {secret}"}
+        r = requests.get(url, headers=headers, timeout=10)
+        return r.json()
+    except Exception as e:
+        return {"status": False, "message": str(e)}
+# --- END PAYSTACK ---
+
 def extract_text_from_image(image_bytes):
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
     b64 = base64.b64encode(image_bytes).decode('utf-8')
@@ -102,6 +129,34 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
+# --- AUTO VERIFY AFTER PAYSTACK REDIRECT ---
+query_params = st.query_params
+if "reference" in query_params:
+    ref = query_params["reference"]
+    verify = verify_paystack(ref)
+    if verify.get("status") and verify.get("data", {}).get("status") == "success":
+        data = verify["data"]
+        amount = data.get("amount", 0)
+        plan = data.get("metadata", {}).get("plan", "")
+        now = datetime.now()
+        if amount == 1000 or plan == "ONCE10":
+            st.session_state.uses = max(0, st.session_state.uses - 10)
+            st.success("R10 received! +10 grades added ✅")
+            st.balloons()
+        elif amount == 4900 or plan == "WEEK49":
+            st.session_state.pro_expiry = now + timedelta(days=7)
+            st.success("R49 Weekly PRO activated - 7 days ✅")
+            st.balloons()
+        elif amount == 9900 or plan == "MONTH99":
+            st.session_state.pro_expiry = now + timedelta(days=30)
+            st.success("R99 Monthly PRO activated - 30 days + Batch 50 ✅")
+            st.balloons()
+        elif amount == 79900 or plan == "YEAR799":
+            st.session_state.pro_expiry = now + timedelta(days=365)
+            st.success("R799 Yearly PRO activated - 365 days ✅")
+            st.balloons()
+        st.query_params.clear()
+
 st.title("📝 TEFLMate v5.1 - Batch Grader")
 st.caption(f"Grade 50 essays in 4 minutes • Pricing in {st.session_state.geo['code']}")
 with st.sidebar:
@@ -116,6 +171,41 @@ with st.sidebar:
     st.caption("Batch 50 = Upload CSV and grade 50 essays at once into 1 PDF. For teachers with many books.")
     st.markdown(f"- Yearly: {g['symbol']}{g['yearly']} = 365 days")
     st.divider()
+
+    # --- PAYSTACK 4 OPTIONS FOR ZA ---
+    if g['code'] == "ZAR":
+        st.markdown("#### 🇿🇦 Pay with Card / EFT (Instant)")
+        email_for_pay = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="paystack_email")
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
+            if st.button(f"Once R{g['once']}", key="pay_once"):
+                res = init_paystack(email_for_pay, 1000, "ONCE10")
+                if res.get("status"):
+                    st.link_button("Pay R10 Now →", res["data"]["authorization_url"])
+                else:
+                    st.error(res.get('message'))
+            if st.button(f"Monthly R{g['monthly']} ⭐", key="pay_month"):
+                res = init_paystack(email_for_pay, 9900, "MONTH99")
+                if res.get("status"):
+                    st.link_button("Pay R99 Now →", res["data"]["authorization_url"])
+                else:
+                    st.error(res.get('message'))
+        with col_p2:
+            if st.button(f"Weekly R{g['weekly']}", key="pay_week"):
+                res = init_paystack(email_for_pay, 4900, "WEEK49")
+                if res.get("status"):
+                    st.link_button("Pay R49 Now →", res["data"]["authorization_url"])
+                else:
+                    st.error(res.get('message'))
+            if st.button(f"Yearly R{g['yearly']}", key="pay_year"):
+                res = init_paystack(email_for_pay, 79900, "YEAR799")
+                if res.get("status"):
+                    st.link_button("Pay R799 Now →", res["data"]["authorization_url"])
+                else:
+                    st.error(res.get('message'))
+        st.caption("Card / EFT / Capitec Pay - Auto unlock")
+        st.divider()
+
     st.markdown("#### 🌍 Pay Globally")
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
     st.caption(f"PayPal.me/TaahirMahomed\nPay {g['symbol']}{g['once']} / {g['symbol']}{g['weekly']} / {g['symbol']}{g['monthly']} / {g['symbol']}{g['yearly']} - Then send proof")
@@ -144,7 +234,7 @@ with tab1:
     level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level")
     if st.button("GRADE ESSAY ->"):
         if not is_pro() and st.session_state.uses >= 3:
-            st.error("Free limit reached")
+            st.error("Free limit reached - Pay via Paystack in sidebar for instant unlock")
             st.stop()
         with st.spinner("Grading..."):
             result_text = grade_with_groq(essay, level)
