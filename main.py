@@ -6,7 +6,6 @@ import unicodedata
 import pandas as pd
 import base64
 import requests
-import time
 try:
     import fitz
 except ImportError:
@@ -14,8 +13,8 @@ except ImportError:
 
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
-st.set_page_config(page_title="TEFLMate v5.5 One-Click", page_icon="📝", layout="centered")
-st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:12px;height:52px;font-weight:bold;width:100%;font-size:15px;} div[data-testid="stLinkButton"]>a{background:#111!important;color:white!important;border-radius:12px!important;height:52px!important;font-weight:bold!important;width:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:15px!important;}</style>""", unsafe_allow_html=True)
+st.set_page_config(page_title="TEFLMate v5.5.2 Fixed", page_icon="📝", layout="centered")
+st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:12px;height:52px;font-weight:bold;width:100%;font-size:15px;} div[data-testid="stLinkButton"]>a{background:#111!important;color:white!important;border-radius:12px!important;height:52px!important;font-weight:bold!important;width:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:14px!important;}</style>""", unsafe_allow_html=True)
 
 if "uses" not in st.session_state: st.session_state.uses = 0
 if "pro_expiry" not in st.session_state: st.session_state.pro_expiry = None
@@ -37,10 +36,9 @@ def clean(t): return unicodedata.normalize('NFKD', t or "").encode('ascii','igno
 def init_paystack(email, amount_kobo, plan_code):
     try:
         secret = st.secrets["PAYSTACK_SECRET_KEY"]
-        url = "https://api.paystack.co/transaction/initialize"
         headers = {"Authorization": f"Bearer {secret}", "Content-Type": "application/json"}
         data = {"email": email, "amount": int(amount_kobo), "metadata": {"plan": plan_code}}
-        r = requests.post(url, json=data, headers=headers, timeout=10)
+        r = requests.post("https://api.paystack.co/transaction/initialize", json=data, headers=headers, timeout=10)
         return r.json()
     except Exception as e:
         return {"status": False, "message": str(e)}
@@ -68,6 +66,18 @@ q=st.query_params
 if "reference" in q:
     if unlock(verify_paystack(q["reference"])): st.query_params.clear()
 
+def grade_with_groq(essay, lvl):
+    client=Groq(api_key=st.secrets["GROQ_API_KEY"])
+    return client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":f"You are Cambridge TEFL examiner for {lvl}. Grade: {essay}. ASCII only. Include CEFR Level, Score/10 vs Target {lvl}, Summary, 2 Strengths, Table Mistake|Correction|Why, Then corrected version."}]).choices[0].message.content
+
+def create_branded_pdf(orig, ai_res, lvl):
+    pdf=FPDF(); pdf.set_auto_page_break(auto=True, margin=15); pdf.add_page()
+    pdf.set_fill_color(17,24,39); pdf.rect(0,0,210,32,'F'); pdf.set_y(7)
+    pdf.set_font("Arial",'B',14); pdf.set_text_color(255,255,255); pdf.cell(0,8,"Mr Mahomed | Essay Grader Report",align='C',ln=True); pdf.ln(10)
+    pdf.set_text_color(0,0,0); pdf.set_font("Arial",'B',11); pdf.cell(0,7,f"Target Level: {lvl} | Date: {datetime.now().strftime('%d %b %Y')}",ln=True); pdf.ln(2)
+    pdf.set_font("Arial",'',10); pdf.multi_cell(0,6,clean(ai_res))
+    return pdf.output(dest='S').encode('latin-1')
+
 def extract_text_from_image(b):
     client=Groq(api_key=st.secrets["GROQ_API_KEY"]); b64=base64.b64encode(b).decode('utf-8')
     try:
@@ -86,29 +96,15 @@ def extract_text_from_pdf(b):
         return t
     except Exception as e: return f"PDF_ERROR: {e}"
 
-def create_branded_pdf(orig, ai_res, lvl):
-    pdf=FPDF(); pdf.set_auto_page_break(auto=True, margin=15); pdf.add_page()
-    pdf.set_fill_color(17,24,39); pdf.rect(0,0,210,32,'F'); pdf.set_y(7)
-    pdf.set_font("Arial",'B',14); pdf.set_text_color(255,255,255); pdf.cell(0,8,"Mr Mahomed | Essay Grader Report",align='C',ln=True); pdf.ln(10)
-    pdf.set_text_color(0,0,0); pdf.set_font("Arial",'B',11); pdf.cell(0,7,f"Target Level: {lvl} | Date: {datetime.now().strftime('%d %b %Y')}",ln=True); pdf.ln(2)
-    pdf.set_font("Arial",'',10); pdf.multi_cell(0,6,clean(ai_res))
-    return pdf.output(dest='S').encode('latin-1')
-
-def grade_with_groq(essay, lvl):
-    client=Groq(api_key=st.secrets["GROQ_API_KEY"])
-    return client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":f"You are Cambridge TEFL examiner for {lvl}. Grade: {essay}. ASCII only. Include CEFR Level, Score/10 vs Target {lvl}, Summary, 2 Strengths, Table Mistake|Correction|Why, Then corrected version."}]).choices[0].message.content
-
-st.title("📝 TEFLMate v5.5")
-st.caption("One click to pay - auto unlocks")
-
+# SIDEBAR - NO LOOP
 with st.sidebar:
     st.markdown("### 🔑 Your Plan"); st.info(get_status()); g=st.session_state.geo
-
     if g['code']=="ZAR":
         st.markdown("#### 🇿🇦 Choose Your Plan")
-        st.caption("1 click → Pay on Paystack → Return here → Auto unlocks 🎈")
+        st.caption("1 click → Pay on Paystack → Return here → Click Unlock")
         email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email")
 
+        # Create links once
         if not st.session_state.pay_links and email:
             with st.spinner("Loading pay options..."):
                 for plan, amt in [("ONCE10",1000),("WEEK49",4900),("MONTH99",9900),("YEAR799",79900)]:
@@ -119,38 +115,45 @@ with st.sidebar:
 
         if st.session_state.pay_links:
             if "ONCE10" in st.session_state.pay_links:
-                if st.link_button("💳 Pay Once R10 - +10 grades (No Batch)", st.session_state.pay_links["ONCE10"], use_container_width=True):
-                    st.session_state.last_ref = st.session_state.pay_refs["ONCE10"]
+                st.link_button("💳 Pay Once R10 - +10 grades (No Batch)", st.session_state.pay_links["ONCE10"], use_container_width=True)
             if "WEEK49" in st.session_state.pay_links:
-                if st.link_button("💳 Pay Weekly R49 - 7 days + Batch 50", st.session_state.pay_links["WEEK49"], use_container_width=True):
-                    st.session_state.last_ref = st.session_state.pay_refs["WEEK49"]
+                st.link_button("💳 Pay Weekly R49 - 7 days + Batch 50", st.session_state.pay_links["WEEK49"], use_container_width=True)
             if "MONTH99" in st.session_state.pay_links:
-                if st.link_button("⭐ Pay Monthly R99 - 30 days + Batch 50", st.session_state.pay_links["MONTH99"], use_container_width=True):
-                    st.session_state.last_ref = st.session_state.pay_refs["MONTH99"]
+                st.link_button("⭐ Pay Monthly R99 - 30 days + Batch 50", st.session_state.pay_links["MONTH99"], use_container_width=True)
             if "YEAR799" in st.session_state.pay_links:
-                if st.link_button("💳 Pay Yearly R799 - 365 days + Batch 50", st.session_state.pay_links["YEAR799"], use_container_width=True):
-                    st.session_state.last_ref = st.session_state.pay_refs["YEAR799"]
+                st.link_button("💳 Pay Yearly R799 - 365 days + Batch 50", st.session_state.pay_links["YEAR799"], use_container_width=True)
+
+            # Save last ref based on which link was last generated - user will paste or we use latest
+            # Simplified: store all refs, verify button checks latest
+            if st.session_state.pay_refs:
+                st.session_state.last_ref = list(st.session_state.pay_refs.values())[-1]
 
             st.write("")
-            if st.session_state.last_ref:
-                st.info("💳 Payment started... After paying on Paystack, come back to this tab. Checking automatically...")
-                v = verify_paystack(st.session_state.last_ref)
-                if unlock(v):
-                    st.rerun()
-                else:
-                    with st.spinner("Waiting for Paystack confirmation... (auto-checking)"):
-                        time.sleep(4)
+            # MANUAL VERIFY - NO AUTO LOOP, so page never goes blank
+            st.markdown("---")
+            st.markdown("**After paying on Paystack:**")
+            if st.button("✅ I PAID - Click to Unlock PRO", type="primary", use_container_width=True):
+                if st.session_state.last_ref:
+                    v = verify_paystack(st.session_state.last_ref)
+                    if unlock(v):
                         st.rerun()
-        else:
-            st.button("Loading...", disabled=True)
+                    else:
+                        st.warning("Not confirmed yet. Wait 10 sec after Paystack Success, then click again.")
+                        # Optional: allow pasting ref
+                        with st.expander("Paste Paystack Reference"):
+                            ref_input = st.text_input("Reference (e.g. T...)", key="ref_manual")
+                            if st.button("Verify Reference"):
+                                if unlock(verify_paystack(ref_input.strip())):
+                                    st.rerun()
+                else:
+                    st.warning("No payment found. Click a Pay button first.")
 
         if st.button("🔄 Refresh Pay Links"):
             st.session_state.pay_links = {}
             st.session_state.pay_refs = {}
+            st.session_state.last_ref = None
             st.rerun()
-
         st.divider()
-
     st.link_button("🌍 PayPal", PAYPAL_ME)
     st.divider()
     code=st.text_input("Got a code?", type="password").strip().upper()
@@ -159,6 +162,10 @@ with st.sidebar:
         m={"TEACH10":lambda:setattr(st.session_state,'uses',max(0,st.session_state.uses-10)),"WEEK49":lambda:setattr(st.session_state,'pro_expiry',now+timedelta(days=7)),"MONTH99":lambda:setattr(st.session_state,'pro_expiry',now+timedelta(days=30)),"YEAR799":lambda:setattr(st.session_state,'pro_expiry',now+timedelta(days=365)),"TEFL2026":lambda:setattr(st.session_state,'pro_expiry',now+timedelta(days=30))}
         if code in m: m[code](); st.success("Unlocked!"); st.rerun()
         else: st.error("Bad code")
+
+# MAIN PAGE - WILL ALWAYS SHOW NOW
+st.title("📝 TEFLMate v5.5.2")
+st.caption("One click to pay - auto unlocks")
 
 tab1,tab2,tab3,tab4=st.tabs(["Single Essay","Batch 50 (PRO)","📸 Photo/PDF","📘 Guide"])
 with tab1:
@@ -177,7 +184,7 @@ with tab2:
     lvl2=st.selectbox("Level:",["A1","A2","B1","B2","C1","C2"],key="batch")
     up=st.file_uploader("Upload CSV/TXT",type=["csv","txt"])
     if st.button("GRADE BATCH 50 ->"):
-        if not is_pro(): st.error("Batch 50 needs any PRO plan (Weekly/Monthly/Yearly) - R10 Once does NOT include Batch"); st.stop()
+        if not is_pro(): st.error("Batch 50 needs any PRO plan (Weekly/Monthly/Yearly)"); st.stop()
         if not up: st.warning("Upload first"); st.stop()
         ess=[]
         if up.name.endswith(".csv"):
