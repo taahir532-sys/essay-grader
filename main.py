@@ -45,7 +45,6 @@ def is_pro():
     return st.session_state.pro_expiry is not None and datetime.now() < st.session_state.pro_expiry
 
 def get_status():
-    # NEW: Shows amount, days, essays for every plan
     if is_pro():
         days = (st.session_state.pro_expiry - datetime.now()).days + 1
         plan = st.session_state.active_plan
@@ -61,7 +60,6 @@ def get_status():
         remaining = 3 - st.session_state.uses
         if remaining <= 0:
             return f"❌ FREE - 0 left (Pay to continue)"
-        # For R10 package
         if st.session_state.active_plan == "ONCE10" and remaining > 3:
             return f"✅ R10 Active - {remaining} essays left (Once-off R10 - No Batch)"
         return f"FREE - {remaining} left"
@@ -69,7 +67,6 @@ def get_status():
 def clean(text):
     return unicodedata.normalize('NFKD', text or "").encode('ascii', 'ignore').decode('ascii')
 
-# --- PAYSTACK ---
 def init_paystack(email, amount_kobo, plan_code):
     try:
         secret = st.secrets["PAYSTACK_SECRET_KEY"]
@@ -191,7 +188,6 @@ st.caption(f"Grade 50 essays in 4 minutes • Pricing in {st.session_state.geo['
 with st.sidebar:
     st.markdown("### 🔑 Your Plan")
     st.info(get_status())
-    # Show details box for active plan
     if is_pro() or (st.session_state.active_plan == "ONCE10"):
         with st.expander("📦 Your Active Package Details", expanded=True):
             if st.session_state.active_plan == "ONCE10":
@@ -221,7 +217,8 @@ with st.sidebar:
     g = st.session_state.geo
     if g['code'] == "ZAR":
         st.markdown(f"#### 💰 1-Click Pay ({g['code']})")
-        st.caption("Tap → Pay on Paystack → Come back → Auto unlocks")
+        # FIXED TEXT - honest
+        st.caption("1. Tap a button below 2. Pay on Paystack 3. Return here 4. Tap Check Payment to unlock")
         email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email_v51")
         if not st.session_state.pay_links and email:
             with st.spinner("Loading pay options..."):
@@ -231,19 +228,17 @@ with st.sidebar:
                         st.session_state.pay_links[plan] = res["data"]["authorization_url"]
                         st.session_state.pay_refs[plan] = res["data"]["reference"]
         if st.session_state.pay_links:
-            st.link_button("💳 Pay Once R10 - +10 grades | No Batch | No expiry", st.session_state.pay_links.get("ONCE10","#"), use_container_width=True)
+            st.link_button("💳 Pay Once R10 - +10 grades | No Batch", st.session_state.pay_links.get("ONCE10","#"), use_container_width=True)
             st.link_button("💳 Pay Weekly R49 - 7 days - Unlimited + Batch 50", st.session_state.pay_links.get("WEEK49","#"), use_container_width=True)
             st.link_button("⭐ Pay Monthly R99 - 30 days - Unlimited + Batch 50", st.session_state.pay_links.get("MONTH99","#"), use_container_width=True)
             st.link_button("💳 Pay Yearly R799 - 365 days - Unlimited + Batch 50", st.session_state.pay_links.get("YEAR799","#"), use_container_width=True)
             st.write("")
-            if st.button("✅ I PAID - Unlock Now", type="primary", use_container_width=True):
+            # ONLY ONE BUTTON NOW
+            if st.button("✅ Check Payment - Unlock My Plan", type="primary", use_container_width=True):
                 if verify_all_refs():
                     st.rerun()
                 else:
-                    st.warning("Not yet confirmed. Wait 10 sec after Success, then click again.")
-            if st.button("🔄 Refresh Links"):
-                st.session_state.pay_links={}; st.session_state.pay_refs={}; st.rerun()
-        st.caption("Batch 50 = Upload CSV and grade 50 essays at once.")
+                    st.warning("Payment not confirmed yet. Make sure you finished paying on Paystack, then wait 10 seconds and tap again.")
     else:
         st.markdown(f"#### 💰 Pricing ({g['code']})")
         st.markdown(f"- FREE: 3 essays")
@@ -255,7 +250,7 @@ with st.sidebar:
     st.divider()
     st.markdown("#### 🌍 Pay Globally")
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-    st.caption(f"PayPal.me/TaahirMahomed\nPay {g['symbol']}{g['once']} / {g['symbol']}{g['weekly']} / {g['symbol']}{g['monthly']} / {g['symbol']}{g['yearly']}")
+    st.caption(f"PayPal.me/TaahirMahomed")
     st.divider()
     st.caption("Loved it? Send proof and I'll send your code instantly ❤️")
     code = st.text_input("Got a code?", placeholder="Paste your code here", type="password").strip().upper()
