@@ -46,15 +46,17 @@ def get_status():
 def clean(text):
     return unicodedata.normalize('NFKD', text or "").encode('ascii', 'ignore').decode('ascii')
 
-# --- PAYSTACK 4 OPTIONS ---
+# --- PAYSTACK 4 OPTIONS WITH AUTO CALLBACK ---
 def init_paystack(email, amount_kobo, plan_code):
     try:
         secret = st.secrets["PAYSTACK_SECRET_KEY"]
+        callback = st.secrets.get("PAYSTACK_CALLBACK_URL", "https://essay-grader-3a1bxqeqdfpdh9huwezx57.streamlit.app")
         url = "https://api.paystack.co/transaction/initialize"
         headers = {"Authorization": f"Bearer {secret}", "Content-Type": "application/json"}
         data = {
             "email": email,
             "amount": int(amount_kobo),
+            "callback_url": callback,
             "metadata": {"plan": plan_code}
         }
         r = requests.post(url, json=data, headers=headers, timeout=10)
@@ -71,11 +73,10 @@ def verify_paystack(reference):
         return r.json()
     except Exception as e:
         return {"status": False, "message": str(e)}
-# --- END PAYSTACK ---
 
 def extract_text_from_image(image_bytes):
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-    b64 = base64.b64encode(image_bytes).decode('utf-8')
+    b64 = base64.bencode(image_bytes).decode('utf-8') if False else base64.b64encode(image_bytes).decode('utf-8')
     try:
         res = client.chat.completions.create(
             model="qwen/qwen3.6-27b",
@@ -129,7 +130,7 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
-# --- AUTO VERIFY AFTER PAYSTACK REDIRECT ---
+# AUTO VERIFY AFTER REDIRECT
 query_params = st.query_params
 if "reference" in query_params:
     ref = query_params["reference"]
@@ -168,11 +169,9 @@ with st.sidebar:
     st.markdown(f"- Once-off: {g['symbol']}{g['once']} = +10 grades")
     st.markdown(f"- Weekly: {g['symbol']}{g['weekly']} = 7 days unlimited")
     st.markdown(f"- Monthly: {g['symbol']}{g['monthly']} = 30 days unlimited + Batch 50 Tool")
-    st.caption("Batch 50 = Upload CSV and grade 50 essays at once into 1 PDF. For teachers with many books.")
+    st.caption("Batch 50 = Upload CSV and grade 50 essays at once into 1 PDF.")
     st.markdown(f"- Yearly: {g['symbol']}{g['yearly']} = 365 days")
     st.divider()
-
-    # --- PAYSTACK 4 OPTIONS FOR ZA ---
     if g['code'] == "ZAR":
         st.markdown("#### 🇿🇦 Pay with Card / EFT (Instant)")
         email_for_pay = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="paystack_email")
@@ -205,10 +204,9 @@ with st.sidebar:
                     st.error(res.get('message'))
         st.caption("Card / EFT / Capitec Pay - Auto unlock")
         st.divider()
-
     st.markdown("#### 🌍 Pay Globally")
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-    st.caption(f"PayPal.me/TaahirMahomed\nPay {g['symbol']}{g['once']} / {g['symbol']}{g['weekly']} / {g['symbol']}{g['monthly']} / {g['symbol']}{g['yearly']} - Then send proof")
+    st.caption(f"PayPal.me/TaahirMahomed")
     st.divider()
     st.caption("Loved it? Send proof and I'll send your code instantly ❤️")
     code = st.text_input("Got a code?", placeholder="Paste your code here", type="password").strip().upper()
@@ -243,15 +241,13 @@ with tab1:
             st.download_button("📄 Download PDF", create_branded_pdf(essay, result_text, level), file_name=f"Report_{level}.pdf")
 with tab2:
     st.markdown("### Upload 50 Essays At Once")
-    st.info(f"Monthly {g['symbol']}{g['monthly']} unlocks this: Grade 50 essays at once instead of one by one.")
+    st.info(f"Monthly {g['symbol']}{g['monthly']} unlocks this")
     sample_df = pd.DataFrame({
         "student_name": ["Student 1", "Student 2", "Student 3"],
-        "essay": ["I go to market yesterday. It was very fun because I buyed many things.", "My best friend is Thandi. She is kind and she help me every day.", "I broken my leg last week. I was playing soccer and I fall down."]
+        "essay": ["I go to market yesterday.", "My best friend is Thandi.", "I broken my leg last week."]
     })
     csv_template = sample_df.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Download CSV Template - Fill 50 essays here", csv_template, file_name="TEFLMate_Batch_Template_50.csv", mime="text/csv", key="template_btn")
-    st.caption("1. Download template above 2. Open in Excel/Sheets 3. Replace essays with your 50 students 4. Save and upload below")
-    st.divider()
+    st.download_button("📥 Download CSV Template", csv_template, file_name="TEFLMate_Batch_Template_50.csv", mime="text/csv", key="template_btn")
     level_b = st.selectbox("Target Level for batch:", ["A1","A2","B1","B2","C1","C2"], key="batch_level")
     uploaded = st.file_uploader("Upload your filled CSV or TXT", type=["csv","txt"], key="batch_file")
     if st.button("GRADE BATCH 50 ->"):
@@ -316,16 +312,7 @@ with tab3:
             st.download_button("📄 Download PDF", create_branded_pdf(edited, result_text, level_p), file_name=f"Photo_{level_p}.pdf")
 with tab4:
     st.markdown("## 📘 How Target Levels Work")
-    st.info("Target Level = The level you WANT them to reach. We grade AGAINST that level.")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.success("**🟢 A1 – Beginner**\n\nGrade 1-3")
-        st.warning("**🟡 B1 – Intermediate**\n\nGrade 7-9")
-        st.error("**🔴 C1 – Advanced**\n\nUniversity")
-    with c2:
-        st.info("**🔵 A2 – Elementary**\n\nGrade 4-6")
-        st.error("**🟠 B2 – Matric**\n\nGrade 10-12")
-        st.markdown("**⚫ C2 – Mastery**\n\nTeacher")
+    st.info("Target Level = The level you WANT them to reach.")
     st.table(pd.DataFrame([
         {"Level": "A1", "Class": "Grade 1-3", "Words": "20-40", "Use For": "ABET"},
         {"Level": "A2", "Class": "Grade 4-6", "Words": "50-80", "Use For": "Primary"},
@@ -335,7 +322,7 @@ with tab4:
         {"Level": "C2", "Class": "Mastery", "Words": "300+", "Use For": "Teachers"},
     ]))
 st.divider()
-st.markdown("### ❤️ Payshap 0658006750 | PayPal: paypal.me/TaahirMahomed | Send proof by WhatsApp or Email and I'll send your code")
+st.markdown("### ❤️ Payshap 0658006750 | PayPal: paypal.me/TaahirMahomed")
 col1, col2, col3 = st.columns(3)
 with col1:
     st.link_button("💬 WhatsApp Proof", "https://wa.me/27658006750?text=Hi%20I%20paid%20for%20TEFLMate")
