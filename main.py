@@ -20,6 +20,8 @@ if "uses" not in st.session_state:
     st.session_state.uses = 0
 if "pro_expiry" not in st.session_state:
     st.session_state.pro_expiry = None
+if "active_plan" not in st.session_state:
+    st.session_state.active_plan = None
 if "pay_links" not in st.session_state:
     st.session_state.pay_links = {}
 if "pay_refs" not in st.session_state:
@@ -41,16 +43,33 @@ if "geo" not in st.session_state:
 
 def is_pro():
     return st.session_state.pro_expiry is not None and datetime.now() < st.session_state.pro_expiry
+
 def get_status():
+    # NEW: Shows amount, days, essays for every plan
     if is_pro():
-        days = (st.session_state.pro_expiry - datetime.now()).days
-        return f"PRO ACTIVE - {days+1} days left"
+        days = (st.session_state.pro_expiry - datetime.now()).days + 1
+        plan = st.session_state.active_plan
+        if plan == "WEEK49":
+            return f"✅ R49 Weekly ACTIVE - {days} days left - Unlimited + Batch 50"
+        elif plan == "MONTH99":
+            return f"✅ R99 Monthly ACTIVE - {days} days left - Unlimited + Batch 50"
+        elif plan == "YEAR799":
+            return f"✅ R799 Yearly ACTIVE - {days} days left - Unlimited + Batch 50"
+        else:
+            return f"PRO ACTIVE - {days} days left - Unlimited + Batch 50"
     else:
-        return f"FREE - {3 - st.session_state.uses} left"
+        remaining = 3 - st.session_state.uses
+        if remaining <= 0:
+            return f"❌ FREE - 0 left (Pay to continue)"
+        # For R10 package
+        if st.session_state.active_plan == "ONCE10" and remaining > 3:
+            return f"✅ R10 Active - {remaining} essays left (Once-off R10 - No Batch)"
+        return f"FREE - {remaining} left"
+
 def clean(text):
     return unicodedata.normalize('NFKD', text or "").encode('ascii', 'ignore').decode('ascii')
 
-# --- PAYSTACK ADDED - NOTHING ELSE CHANGED ---
+# --- PAYSTACK ---
 def init_paystack(email, amount_kobo, plan_code):
     try:
         secret = st.secrets["PAYSTACK_SECRET_KEY"]
@@ -74,10 +93,19 @@ def unlock_paystack(v):
     d=v.get("data",{})
     if d.get("status")!="success": return False
     amt=d.get("amount",0); plan=d.get("metadata",{}).get("plan",""); now=datetime.now()
-    if amt==1000 or plan=="ONCE10": st.session_state.uses=max(0,st.session_state.uses-10); st.success("R10 received! +10 grades ✅"); st.balloons(); return True
-    elif amt==4900 or plan=="WEEK49": st.session_state.pro_expiry=now+timedelta(days=7); st.success("R49 Weekly PRO - 7 days + Batch 50 ✅"); st.balloons(); return True
-    elif amt==9900 or plan=="MONTH99": st.session_state.pro_expiry=now+timedelta(days=30); st.success("R99 Monthly PRO - 30 days + Batch 50 ✅"); st.balloons(); return True
-    elif amt==79900 or plan=="YEAR799": st.session_state.pro_expiry=now+timedelta(days=365); st.success("R799 Yearly PRO - 365 days + Batch 50 ✅"); st.balloons(); return True
+    if amt==1000 or plan=="ONCE10":
+        st.session_state.uses -= 10
+        st.session_state.active_plan = "ONCE10"
+        st.success(f"R10 received! You now have {3 - st.session_state.uses} essays left ✅"); st.balloons(); return True
+    elif amt==4900 or plan=="WEEK49":
+        st.session_state.pro_expiry=now+timedelta(days=7); st.session_state.active_plan="WEEK49"
+        st.success("R49 Weekly PRO - 7 days + Batch 50 ✅"); st.balloons(); return True
+    elif amt==9900 or plan=="MONTH99":
+        st.session_state.pro_expiry=now+timedelta(days=30); st.session_state.active_plan="MONTH99"
+        st.success("R99 Monthly PRO - 30 days + Batch 50 ✅"); st.balloons(); return True
+    elif amt==79900 or plan=="YEAR799":
+        st.session_state.pro_expiry=now+timedelta(days=365); st.session_state.active_plan="YEAR799"
+        st.success("R799 Yearly PRO - 365 days + Batch 50 ✅"); st.balloons(); return True
     return False
 
 def verify_all_refs():
@@ -91,7 +119,6 @@ def verify_all_refs():
                 return True
     return False
 
-# Auto unlock if Paystack returns with?reference=
 q=st.query_params
 if "reference" in q:
     if unlock_paystack(verify_paystack(q["reference"])):
@@ -101,7 +128,6 @@ if "reference" in q:
 else:
     if st.session_state.pay_refs:
         verify_all_refs()
-# --- END PAYSTACK ADDITION ---
 
 def extract_text_from_image(image_bytes):
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
@@ -161,61 +187,88 @@ def grade_with_groq(essay_text, level):
 
 st.title("📝 TEFLMate v5.1 - Batch Grader")
 st.caption(f"Grade 50 essays in 4 minutes • Pricing in {st.session_state.geo['code']}")
+
 with st.sidebar:
     st.markdown("### 🔑 Your Plan")
     st.info(get_status())
-    g = st.session_state.geo
-    st.markdown(f"#### 💰 Pricing ({g['code']})")
-    st.markdown(f"- FREE: 3 essays")
-    st.markdown(f"- Once-off: {g['symbol']}{g['once']} = +10 grades")
-    st.markdown(f"- Weekly: {g['symbol']}{g['weekly']} = 7 days unlimited")
-    st.markdown(f"- Monthly: {g['symbol']}{g['monthly']} = 30 days unlimited + Batch 50 Tool")
-    st.caption("Batch 50 = Upload CSV and grade 50 essays at once into 1 PDF. For teachers with many books.")
-    st.markdown(f"- Yearly: {g['symbol']}{g['yearly']} = 365 days")
-    st.divider()
+    # Show details box for active plan
+    if is_pro() or (st.session_state.active_plan == "ONCE10"):
+        with st.expander("📦 Your Active Package Details", expanded=True):
+            if st.session_state.active_plan == "ONCE10":
+                st.write(f"**Amount:** R10 Once-off")
+                st.write(f"**Essays:** {3 - st.session_state.uses} left")
+                st.write(f"**Days:** No expiry, uses only")
+                st.write(f"**Batch 50:** ❌ No")
+            elif st.session_state.active_plan == "WEEK49":
+                days = (st.session_state.pro_expiry - datetime.now()).days + 1
+                st.write(f"**Amount:** R49 Weekly")
+                st.write(f"**Essays:** Unlimited")
+                st.write(f"**Days:** {days} days left")
+                st.write(f"**Batch 50:** ✅ Yes")
+            elif st.session_state.active_plan == "MONTH99":
+                days = (st.session_state.pro_expiry - datetime.now()).days + 1
+                st.write(f"**Amount:** R99 Monthly")
+                st.write(f"**Essays:** Unlimited")
+                st.write(f"**Days:** {days} days left")
+                st.write(f"**Batch 50:** ✅ Yes")
+            elif st.session_state.active_plan == "YEAR799":
+                days = (st.session_state.pro_expiry - datetime.now()).days + 1
+                st.write(f"**Amount:** R799 Yearly")
+                st.write(f"**Essays:** Unlimited")
+                st.write(f"**Days:** {days} days left")
+                st.write(f"**Batch 50:** ✅ Yes")
 
-    # --- PAYSTACK ONE-CLICK ADDED HERE, YOUR ORIGINAL BELOW IT STAYS ---
-    if g['code']=="ZAR":
-        st.markdown("#### 🇿🇦 Pay with Paystack - 1 Click")
-        st.caption("Tap → Pay → Come back → Auto unlocks")
-        email = st.text_input("Email for Paystack receipt:", value=YOUR_EMAIL, key="pay_email_v51")
+    g = st.session_state.geo
+    if g['code'] == "ZAR":
+        st.markdown(f"#### 💰 1-Click Pay ({g['code']})")
+        st.caption("Tap → Pay on Paystack → Come back → Auto unlocks")
+        email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email_v51")
         if not st.session_state.pay_links and email:
-            with st.spinner("Loading..."):
+            with st.spinner("Loading pay options..."):
                 for plan, amt in [("ONCE10",1000),("WEEK49",4900),("MONTH99",9900),("YEAR799",79900)]:
                     res = init_paystack(email, amt, plan)
                     if res.get("status"):
                         st.session_state.pay_links[plan] = res["data"]["authorization_url"]
                         st.session_state.pay_refs[plan] = res["data"]["reference"]
         if st.session_state.pay_links:
-            st.link_button("💳 Pay Once R10 - +10 grades (No Batch)", st.session_state.pay_links.get("ONCE10","#"), use_container_width=True)
-            st.link_button("💳 Pay Weekly R49 - 7 days + Batch 50", st.session_state.pay_links.get("WEEK49","#"), use_container_width=True)
-            st.link_button("⭐ Pay Monthly R99 - 30 days + Batch 50", st.session_state.pay_links.get("MONTH99","#"), use_container_width=True)
-            st.link_button("💳 Pay Yearly R799 - 365 days + Batch 50", st.session_state.pay_links.get("YEAR799","#"), use_container_width=True)
+            st.link_button("💳 Pay Once R10 - +10 grades | No Batch | No expiry", st.session_state.pay_links.get("ONCE10","#"), use_container_width=True)
+            st.link_button("💳 Pay Weekly R49 - 7 days - Unlimited + Batch 50", st.session_state.pay_links.get("WEEK49","#"), use_container_width=True)
+            st.link_button("⭐ Pay Monthly R99 - 30 days - Unlimited + Batch 50", st.session_state.pay_links.get("MONTH99","#"), use_container_width=True)
+            st.link_button("💳 Pay Yearly R799 - 365 days - Unlimited + Batch 50", st.session_state.pay_links.get("YEAR799","#"), use_container_width=True)
             st.write("")
             if st.button("✅ I PAID - Unlock Now", type="primary", use_container_width=True):
                 if verify_all_refs():
                     st.rerun()
                 else:
-                    st.warning("Not yet confirmed. Wait 10 sec after Paystack Success, then click again. Or refresh page - it auto-checks.")
+                    st.warning("Not yet confirmed. Wait 10 sec after Success, then click again.")
             if st.button("🔄 Refresh Links"):
                 st.session_state.pay_links={}; st.session_state.pay_refs={}; st.rerun()
-        st.divider()
-    # --- END PAYSTACK, YOUR ORIGINAL CONTINUES ---
+        st.caption("Batch 50 = Upload CSV and grade 50 essays at once.")
+    else:
+        st.markdown(f"#### 💰 Pricing ({g['code']})")
+        st.markdown(f"- FREE: 3 essays")
+        st.markdown(f"- Once-off: {g['symbol']}{g['once']} = +10 grades - No Batch")
+        st.markdown(f"- Weekly: {g['symbol']}{g['weekly']} = 7 days unlimited + Batch 50")
+        st.markdown(f"- Monthly: {g['symbol']}{g['monthly']} = 30 days unlimited + Batch 50 Tool")
+        st.markdown(f"- Yearly: {g['symbol']}{g['yearly']} = 365 days unlimited + Batch 50")
 
+    st.divider()
     st.markdown("#### 🌍 Pay Globally")
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-    st.caption(f"PayPal.me/TaahirMahomed\nPay {g['symbol']}{g['once']} / {g['symbol']}{g['weekly']} / {g['symbol']}{g['monthly']} / {g['symbol']}{g['yearly']} - Then send proof")
+    st.caption(f"PayPal.me/TaahirMahomed\nPay {g['symbol']}{g['once']} / {g['symbol']}{g['weekly']} / {g['symbol']}{g['monthly']} / {g['symbol']}{g['yearly']}")
     st.divider()
     st.caption("Loved it? Send proof and I'll send your code instantly ❤️")
     code = st.text_input("Got a code?", placeholder="Paste your code here", type="password").strip().upper()
     if st.button("Unlock Code"):
         now = datetime.now()
+        def set_plan(p):
+            st.session_state.active_plan = p
         code_map = {
-            "TEACH10": lambda: setattr(st.session_state, 'uses', max(0, st.session_state.uses - 10)),
-            "WEEK49": lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=7)),
-            "MONTH99": lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=30)),
-            "YEAR799": lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=365)),
-            "TEFL2026": lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=30)),
+            "TEACH10": lambda: (setattr(st.session_state, 'uses', st.session_state.uses - 10), set_plan("ONCE10")),
+            "WEEK49": lambda: (setattr(st.session_state, 'pro_expiry', now + timedelta(days=7)), set_plan("WEEK49")),
+            "MONTH99": lambda: (setattr(st.session_state, 'pro_expiry', now + timedelta(days=30)), set_plan("MONTH99")),
+            "YEAR799": lambda: (setattr(st.session_state, 'pro_expiry', now + timedelta(days=365)), set_plan("YEAR799")),
+            "TEFL2026": lambda: (setattr(st.session_state, 'pro_expiry', now + timedelta(days=30)), set_plan("MONTH99")),
         }
         if code in code_map:
             code_map[code]()
