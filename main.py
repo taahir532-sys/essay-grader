@@ -20,6 +20,8 @@ if "uses" not in st.session_state:
     st.session_state.uses = 0
 if "pro_expiry" not in st.session_state:
     st.session_state.pro_expiry = None
+if "pay_links" not in st.session_state:
+    st.session_state.pay_links = {}
 if "geo" not in st.session_state:
     try:
         ip_data = requests.get("https://ipapi.co/json/", timeout=3).json()
@@ -46,7 +48,6 @@ def get_status():
 def clean(text):
     return unicodedata.normalize('NFKD', text or "").encode('ascii', 'ignore').decode('ascii')
 
-# --- PAYSTACK 4 OPTIONS WITH AUTO CALLBACK ---
 def init_paystack(email, amount_kobo, plan_code):
     try:
         secret = st.secrets["PAYSTACK_SECRET_KEY"]
@@ -76,10 +77,10 @@ def verify_paystack(reference):
 
 def extract_text_from_image(image_bytes):
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-    b64 = base64.bencode(image_bytes).decode('utf-8') if False else base64.b64encode(image_bytes).decode('utf-8')
+    b64 = base64.b64encode(image_bytes).decode('utf-8')
     try:
         res = client.chat.completions.create(
-            model="qwen/qwen3.6-27b",
+            model="qwen/qwen3-32b",
             messages=[{"role": "user","content": [
                 {"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."},
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
@@ -130,7 +131,6 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
-# AUTO VERIFY AFTER REDIRECT
 query_params = st.query_params
 if "reference" in query_params:
     ref = query_params["reference"]
@@ -169,7 +169,7 @@ with st.sidebar:
     st.markdown(f"- Once-off: {g['symbol']}{g['once']} = +10 grades")
     st.markdown(f"- Weekly: {g['symbol']}{g['weekly']} = 7 days unlimited")
     st.markdown(f"- Monthly: {g['symbol']}{g['monthly']} = 30 days unlimited + Batch 50 Tool")
-    st.caption("Batch 50 = Upload CSV and grade 50 essays at once into 1 PDF.")
+    st.caption("Batch 50 = Upload CSV and grade 50 essays at once.")
     st.markdown(f"- Yearly: {g['symbol']}{g['yearly']} = 365 days")
     st.divider()
     if g['code'] == "ZAR":
@@ -180,33 +180,40 @@ with st.sidebar:
             if st.button(f"Once R{g['once']}", key="pay_once"):
                 res = init_paystack(email_for_pay, 1000, "ONCE10")
                 if res.get("status"):
-                    st.link_button("Pay R10 Now →", res["data"]["authorization_url"])
+                    st.session_state.pay_links["ONCE10"] = res["data"]["authorization_url"]
                 else:
-                    st.error(res.get('message'))
+                    st.error(f"Paystack error: {res.get('message')}")
+            if "ONCE10" in st.session_state.pay_links:
+                st.link_button("Pay R10 Now →", st.session_state.pay_links["ONCE10"])
             if st.button(f"Monthly R{g['monthly']} ⭐", key="pay_month"):
                 res = init_paystack(email_for_pay, 9900, "MONTH99")
                 if res.get("status"):
-                    st.link_button("Pay R99 Now →", res["data"]["authorization_url"])
+                    st.session_state.pay_links["MONTH99"] = res["data"]["authorization_url"]
                 else:
-                    st.error(res.get('message'))
+                    st.error(f"Paystack error: {res.get('message')}")
+            if "MONTH99" in st.session_state.pay_links:
+                st.link_button("Pay R99 Now →", st.session_state.pay_links["MONTH99"])
         with col_p2:
             if st.button(f"Weekly R{g['weekly']}", key="pay_week"):
                 res = init_paystack(email_for_pay, 4900, "WEEK49")
                 if res.get("status"):
-                    st.link_button("Pay R49 Now →", res["data"]["authorization_url"])
+                    st.session_state.pay_links["WEEK49"] = res["data"]["authorization_url"]
                 else:
-                    st.error(res.get('message'))
+                    st.error(f"Paystack error: {res.get('message')}")
+            if "WEEK49" in st.session_state.pay_links:
+                st.link_button("Pay R49 Now →", st.session_state.pay_links["WEEK49"])
             if st.button(f"Yearly R{g['yearly']}", key="pay_year"):
                 res = init_paystack(email_for_pay, 79900, "YEAR799")
                 if res.get("status"):
-                    st.link_button("Pay R799 Now →", res["data"]["authorization_url"])
+                    st.session_state.pay_links["YEAR799"] = res["data"]["authorization_url"]
                 else:
-                    st.error(res.get('message'))
+                    st.error(f"Paystack error: {res.get('message')}")
+            if "YEAR799" in st.session_state.pay_links:
+                st.link_button("Pay R799 Now →", st.session_state.pay_links["YEAR799"])
         st.caption("Card / EFT / Capitec Pay - Auto unlock")
         st.divider()
     st.markdown("#### 🌍 Pay Globally")
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-    st.caption(f"PayPal.me/TaahirMahomed")
     st.divider()
     st.caption("Loved it? Send proof and I'll send your code instantly ❤️")
     code = st.text_input("Got a code?", placeholder="Paste your code here", type="password").strip().upper()
@@ -232,7 +239,7 @@ with tab1:
     level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level")
     if st.button("GRADE ESSAY ->"):
         if not is_pro() and st.session_state.uses >= 3:
-            st.error("Free limit reached - Pay via Paystack in sidebar for instant unlock")
+            st.error("Free limit reached - Pay via Paystack in sidebar")
             st.stop()
         with st.spinner("Grading..."):
             result_text = grade_with_groq(essay, level)
