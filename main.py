@@ -15,7 +15,7 @@ except ImportError:
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
 
-st.set_page_config(page_title="TEFLMate v4.2 Pro", page_icon="📝", layout="centered")
+st.set_page_config(page_title="TEFLMate v5.3 Pro", page_icon="📝", layout="centered")
 
 st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:10px;height:45px;font-weight:bold;width:100%;}</style>""", unsafe_allow_html=True)
 
@@ -59,7 +59,7 @@ def extract_text_from_image(image_bytes):
     b64 = base64.b64encode(image_bytes).decode('utf-8')
     try:
         res = client.chat.completions.create(
-            model="qwen/qwen3.6-27b",
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[{"role": "user","content": [
                 {"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."},
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
@@ -110,7 +110,7 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
-st.title("📝 TEFLMate v4.2 - Batch Grader")
+st.title("📝 TEFLMate v5.3 - Batch Grader")
 st.caption(f"Grade 50 essays in 4 minutes • Pricing in {st.session_state.geo['code']}")
 
 with st.sidebar:
@@ -126,7 +126,6 @@ with st.sidebar:
     st.markdown(f"- Yearly: {g['symbol']}{g['yearly']} = 365 days")
     st.divider()
     st.markdown("#### 🌍 Pay Globally")
-    # GENERIC PAYPAL - NO PRICE ON BUTTON
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
     st.caption(f"PayPal.me/TaahirMahomed\nPay {g['symbol']}{g['once']} / {g['symbol']}{g['weekly']} / {g['symbol']}{g['monthly']} / {g['symbol']}{g['yearly']} - Then send proof")
     st.divider()
@@ -275,4 +274,4 @@ with col2:
     st.link_button(f"📧 Email proof", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
 with col3:
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-st.caption("TEFLMate v4.2 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
+st.caption("TEFLMate v5.3 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
