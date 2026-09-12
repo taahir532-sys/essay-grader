@@ -74,7 +74,6 @@ def clean_feedback(text):
     t = re.sub(r'\*\*', '', t)
     t = re.sub(r'###', '', t)
     t = re.sub(r'##', '', t)
-    t = re.sub(r'\|', ' | ', t)
     t = re.sub(r'\n{3,}', '\n\n', t)
     return t.strip()
 
@@ -218,7 +217,7 @@ def create_branded_pdf(original_essay, ai_result, target_level, student_name="St
 
 def grade_with_groq(essay_text, level):
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-    prompt = f"You are Cambridge TEFL examiner for {level}. Grade: {essay_text}. ASCII only. Include CEFR Level, Score/10 vs Target {level}, Summary, 2 Strengths, Table Mistake|Correction|Why, Then corrected version."
+    prompt = f"You are Cambridge TEFL examiner for {level}. Grade: {essay_text}. ASCII only. No markdown stars ** or ###. Include CEFR Level, Score/10 vs Target {level}, Summary, 2 Strengths, Table Mistake|Correction|Why, Then corrected version."
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
