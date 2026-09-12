@@ -399,8 +399,6 @@ with tab2:
             worst = min(excel_rows, key=lambda x: x["Score /10"])
             c3.metric("Top Student", f"{best['Student Name']} ({best['Score /10']}/10)")
             st.caption(f"Weakest: {worst['Student Name']} ({worst['Score /10']}/10) - Needs support")
-
-        # PHASE 3 CHARTS - FREE
         st.markdown("#### 📈 Principal Charts (FREE)")
         col_chart1, col_chart2 = st.columns(2)
         with col_chart1:
@@ -420,10 +418,7 @@ with tab2:
             ax2.pie(cefr_counts.values(), labels=cefr_counts.keys(), autopct='%1.0f%%')
             ax2.set_title("CEFR Distribution")
             st.pyplot(fig2)
-
         st.dataframe(pd.DataFrame(results)[["Student","Score","CEFR","Essay"]])
-
-        # DOWNLOADS - NO RE-GRADE
         grades_df = pd.DataFrame(excel_rows)
         grades_bytes, grades_type = df_to_excel_bytes_safe(grades_df, "Grades")
         col_d1, col_d2 = st.columns(2)
@@ -435,7 +430,6 @@ with tab2:
         with col_d2:
             principal_pdf_bytes = create_principal_pdf(excel_rows, level_b, avg_score, school_name)
             st.download_button("🏫 Download Principal Report PDF", principal_pdf_bytes, file_name=f"Principal_Report_{school_name}_{level_b}.pdf")
-
         st.divider()
         st.markdown("#### 📲 Free WhatsApp Share - No API Cost (Phase 3 Workaround)")
         st.caption("Tap to share each student's result to parents via WhatsApp - uses phone's WhatsApp, not paid API")
@@ -443,7 +437,6 @@ with tab2:
             wa_text = f"TEFLMate Report - {r['Student']}: Score {r['Score']} CEFR {r['CEFR']} - {school_name} - Level {level_b}. Feedback: {r['Result'][:200]}"
             wa_url = f"https://wa.me/?text={urllib.parse.quote(wa_text)}"
             st.link_button(f"📲 Share {r['Student']} - {r['Score']} to WhatsApp", wa_url)
-
         pdf = FPDF(); pdf.set_auto_page_break(auto=True, margin=15)
         for idx, r in enumerate(results):
             pdf.add_page(); pdf.set_font("Arial", 'B', 12); pdf.cell(0, 10, f"{r['Student']} - {r['Score']} - {r['CEFR']}", ln=True)
