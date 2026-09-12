@@ -15,7 +15,7 @@ except ImportError:
 
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
-st.set_page_config(page_title="TEFLMate v6.0.3 Pro - Phase 2", page_icon="📝", layout="centered")
+st.set_page_config(page_title="TEFLMate v6.0.3 Pro - Classroom", page_icon="📝", layout="centered")
 st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:10px;height:45px;font-weight:bold;width:100%;} div[data-testid="stLinkButton"]>a{background:#111!important;color:white!important;border-radius:10px!important;height:45px!important;font-weight:bold!important;width:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;}</style>""", unsafe_allow_html=True)
 
 if "uses" not in st.session_state:
@@ -79,15 +79,14 @@ def extract_score_cefr(text):
     except:
         return 0, "N/A"
 
-# --- v6.0.3 PRETTY EXCEL: auto-wide columns so teachers see 2 columns clean ---
 def df_to_excel_bytes_safe(df, sheet_name="Sheet1"):
     try:
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name=sheet_name)
             ws = writer.sheets[sheet_name]
-            ws.column_dimensions['A'].width = 22 # Student Name wide
-            ws.column_dimensions['B'].width = 85 # Essay wide
+            ws.column_dimensions['A'].width = 22
+            ws.column_dimensions['B'].width = 85
             ws.column_dimensions['C'].width = 15
             ws.column_dimensions['D'].width = 12
             ws.column_dimensions['E'].width = 50
@@ -203,7 +202,7 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
-st.title("📝 TEFLMate v6.0.3 - Phase 2 Classroom")
+st.title("📝 TEFLMate v6.0.3 - Classroom Edition")
 st.caption(f"Grade 50 essays in 4 minutes • Class Reports + Excel • Pricing in {st.session_state.geo['code']}")
 
 with st.sidebar:
@@ -224,8 +223,8 @@ with st.sidebar:
                 st.write(f"**Amount:** R799 Yearly"); st.write(f"**Essays:** Unlimited"); st.write(f"**Days:** {days} days left"); st.write(f"**Batch 50:** ✅ Yes")
     g = st.session_state.geo
     if g['code'] == "ZAR":
-        st.markdown(f"#### 💰 1-Click Pay ({g['code']})")
-        st.caption("1. Tap a button below 2. Pay on Paystack 3. Return here 4. Tap Check Payment to unlock")
+        st.markdown(f"#### 💳 1-Click Pay (Instant Card - Worldwide accepted)")
+        st.caption("1. Tap button 2. Pay on Paystack 3. Return here 4. Tap Check Payment. Works with SA + intl cards (charged in ZAR)")
         email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email_v51")
         if not st.session_state.pay_links and email:
             with st.spinner("Loading pay options..."):
@@ -276,7 +275,7 @@ with st.sidebar:
         else:
             st.error("That code didn't work")
 
-tab1, tab2, tab3, tab4 = st.tabs(["Single Essay", "Batch 50 PRO (Phase 2)", "📸 Photo / PDF", "📘 Guide"])
+tab1, tab2, tab3, tab4 = st.tabs(["Single Essay", "Batch 50 PRO", "📸 Photo / PDF", "📘 Guide"])
 with tab1:
     essay = st.text_area("Paste Student Essay:", height=180, placeholder="I broken my leg")
     level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level")
@@ -290,7 +289,7 @@ with tab1:
             st.download_button("📄 Download PDF", create_branded_pdf(essay, result_text, level, "Student"), file_name=f"Report_{level}.pdf")
 
 with tab2:
-    st.markdown("### 🚀 Phase 2 - Upload 50 Essays At Once (With Student Names)")
+    st.markdown("### 🚀 Upload 50 Essays At Once (With Student Names)")
     st.info(f"Monthly {g['symbol']}{g['monthly']} unlocks this: Grade 50 essays at once + Class Excel + Named PDFs")
     sample_df = pd.DataFrame({
         "student_name": ["Thandi Mabaso", "John Smith", "Aisha Khan", "Lerato Dlamini", "Sipho Nkosi"],
@@ -304,10 +303,10 @@ with tab2:
     })
     template_bytes, template_type = df_to_excel_bytes_safe(sample_df, "Essays")
     if template_type == "xlsx":
-        st.download_button("📥 Download Excel Template (50 Students) - Proper 2 Columns", template_bytes, file_name="TEFLMate_Batch_Template_50_Phase2.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="template_btn")
+        st.download_button("📥 Download Excel Template (50 Students) - Proper 2 Columns", template_bytes, file_name="TEFLMate_Batch_Template_50.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="template_btn")
     else:
         st.warning("Add openpyxl to requirements.txt to get Excel template. Showing CSV for now.")
-        st.download_button("📥 Download CSV Template (Add openpyxl for Excel)", template_bytes, file_name="TEFLMate_Batch_Template_50_Phase2.csv", mime="text/csv", key="template_btn")
+        st.download_button("📥 Download CSV Template (Add openpyxl for Excel)", template_bytes, file_name="TEFLMate_Batch_Template_50.csv", mime="text/csv", key="template_btn")
     st.caption("✅ Fill 2 columns: student_name | essay. Add your 50 students and upload below.")
     st.divider()
     level_b = st.selectbox("Target Level for batch:", ["A1","A2","B1","B2","C1","C2"], key="batch_level")
@@ -356,7 +355,7 @@ with tab2:
         st.success(f"Done! {len(results)} graded")
         df_res = pd.DataFrame(results)
         avg_score = sum([r["Score /10"] if isinstance(r["Score /10"], int) else 0 for r in excel_rows]) / len(excel_rows) if excel_rows else 0
-        st.markdown("### 📊 Class Dashboard - Phase 2")
+        st.markdown("### 📊 Class Dashboard")
         c1, c2, c3 = st.columns(3)
         c1.metric("Average Score", f"{avg_score:.1f} /10")
         c2.metric("Total Graded", f"{len(results)}")
@@ -431,4 +430,4 @@ with col2:
     st.link_button(f"📧 Email proof", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
 with col3:
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-st.caption("TEFLMate v6.0.3 Phase 2 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
+st.caption("TEFLMate v6.0.3 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
