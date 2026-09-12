@@ -448,8 +448,8 @@ with tab2:
             principal_pdf_bytes = create_principal_pdf(excel_rows, level_b, avg_score, school_name)
             st.download_button("🏫 Download Principal Report PDF", principal_pdf_bytes, file_name=f"Principal_Report_{school_name}_{level_b}.pdf")
         st.divider()
-        st.markdown("#### 📲 Free WhatsApp Share - No API Cost")
-        st.caption("Tap to share each student's result to parents via WhatsApp - uses phone's WhatsApp, not paid API")
+        st.markdown("#### 📲 Share to Parents via WhatsApp")
+        st.caption("Tap to share each student's report directly to WhatsApp")
         for r in results[:10]:
             wa_text = f"TEFLMate Report - {r['Student']}: Score {r['Score']} CEFR {r['CEFR']} - {school_name} - Level {level_b}. Feedback: {r['Result'][:200]}"
             wa_url = f"https://wa.me/?text={urllib.parse.quote(wa_text)}"
@@ -513,5 +513,4 @@ with col2:
     st.link_button(f"📧 Email proof", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
 with col3:
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-# CLEAN FOOTER - NO PHASE 3 TEXT
 st.caption("TEFLMate v6.0.7 Pro • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
