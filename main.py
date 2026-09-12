@@ -12,6 +12,7 @@ try:
     import fitz
 except ImportError:
     fitz = None
+from openpyxl.utils import get_column_letter
 
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
@@ -28,6 +29,10 @@ if "pay_links" not in st.session_state:
     st.session_state.pay_links = {}
 if "pay_refs" not in st.session_state:
     st.session_state.pay_refs = {}
+if "batch_results" not in st.session_state:
+    st.session_state.batch_results = None
+    st.session_state.batch_excel_rows = None
+    st.session_state.batch_level = None
 if "geo" not in st.session_state:
     try:
         ip_data = requests.get("https://ipapi.co/json/", timeout=3).json()
@@ -85,11 +90,23 @@ def df_to_excel_bytes_safe(df, sheet_name="Sheet1"):
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name=sheet_name)
             ws = writer.sheets[sheet_name]
-            ws.column_dimensions['A'].width = 22
-            ws.column_dimensions['B'].width = 85
-            ws.column_dimensions['C'].width = 15
-            ws.column_dimensions['D'].width = 12
-            ws.column_dimensions['E'].width = 50
+            for idx, col in enumerate(df.columns, 1):
+                letter = get_column_letter(idx)
+                col_low = str(col).lower()
+                if "student" in col_low:
+                    ws.column_dimensions[letter].width = 24
+                elif "score" in col_low:
+                    ws.column_dimensions[letter].width = 12
+                elif "cefr" in col_low:
+                    ws.column_dimensions[letter].width = 10
+                elif "preview" in col_low:
+                    ws.column_dimensions[letter].width = 40
+                elif "feedback" in col_low or "full" in col_low:
+                    ws.column_dimensions[letter].width = 80
+                elif "essay" in col_low:
+                    ws.column_dimensions[letter].width = 70
+                else:
+                    ws.column_dimensions[letter].width = 20
         return output.getvalue(), "xlsx"
     except Exception:
         try:
@@ -311,6 +328,7 @@ with tab2:
     st.divider()
     level_b = st.selectbox("Target Level for batch:", ["A1","A2","B1","B2","C1","C2"], key="batch_level")
     uploaded = st.file_uploader("Upload your filled Excel or CSV or TXT", type=["csv","txt","xlsx"], key="batch_file")
+
     if st.button("GRADE BATCH 50 ->"):
         if not is_pro():
             st.error(f"Batch 50 needs PRO {g['symbol']}{g['monthly']}"); st.stop()
@@ -350,9 +368,18 @@ with tab2:
             res_text = grade_with_groq(es[:2000], level_b)
             score, cefr = extract_score_cefr(res_text)
             results.append({"Student": names[i], "Essay": es[:100], "Score": f"{score}/10", "CEFR": cefr, "Result": res_text})
-            excel_rows.append({"Student Name": names[i], "Score /10": score, "CEFR": cefr, "Essay Preview": es[:200], "Full Feedback": res_text[:1000]})
+            excel_rows.append({"Student Name": names[i], "Score /10": score, "CEFR": cefr, "Essay Preview": es[:200], "Full Feedback": res_text[:1500]})
             progress.progress((i+1)/len(essays))
-        st.success(f"Done! {len(results)} graded")
+        st.session_state.batch_results = results
+        st.session_state.batch_excel_rows = excel_rows
+        st.session_state.batch_level = level_b
+        st.rerun()
+
+    if st.session_state.batch_results:
+        results = st.session_state.batch_results
+        excel_rows = st.session_state.batch_excel_rows
+        level_b_saved = st.session_state.batch_level or level_b
+        st.success(f"Done! {len(results)} graded - You can now download both files without losing data")
         df_res = pd.DataFrame(results)
         avg_score = sum([r["Score /10"] if isinstance(r["Score /10"], int) else 0 for r in excel_rows]) / len(excel_rows) if excel_rows else 0
         st.markdown("### 📊 Class Dashboard")
@@ -368,14 +395,19 @@ with tab2:
         grades_df = pd.DataFrame(excel_rows)
         grades_bytes, grades_type = df_to_excel_bytes_safe(grades_df, "Grades")
         if grades_type == "xlsx":
-            st.download_button("📊 Download Class Grades Excel (For School)", grades_bytes, file_name=f"Class_Grades_{level_b}_{datetime.now().strftime('%Y%m%d')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            st.download_button("📊 Download Class Grades Excel (For School)", grades_bytes, file_name=f"Class_Grades_{level_b_saved}_{datetime.now().strftime('%Y%m%d')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="grades_xlsx")
         else:
-            st.download_button("📊 Download Class Grades CSV (For School)", grades_bytes, file_name=f"Class_Grades_{level_b}_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv")
+            st.download_button("📊 Download Class Grades CSV (For School)", grades_bytes, file_name=f"Class_Grades_{level_b_saved}_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv", key="grades_csv")
         pdf = FPDF(); pdf.set_auto_page_break(auto=True, margin=15)
         for idx, r in enumerate(results):
             pdf.add_page(); pdf.set_font("Arial", 'B', 12); pdf.cell(0, 10, f"{r['Student']} - {r['Score']} - {r['CEFR']}", ln=True)
             pdf.set_font("Arial", '', 10); pdf.multi_cell(0, 6, clean(r["Result"]))
-        st.download_button("📄 Download All 50 Named Reports PDF", pdf.output(dest='S').encode('latin-1'), file_name=f"Batch_50_Named_{level_b}.pdf")
+        st.download_button("📄 Download All 50 Named Reports PDF", pdf.output(dest='S').encode('latin-1'), file_name=f"Batch_50_Named_{level_b_saved}.pdf", key="grades_pdf")
+        if st.button("Clear Results - Start New Batch"):
+            st.session_state.batch_results = None
+            st.session_state.batch_excel_rows = None
+            st.session_state.batch_level = None
+            st.rerun()
 
 with tab3:
     st.markdown("### 📸 Photo or PDF Scan")
