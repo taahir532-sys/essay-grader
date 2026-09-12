@@ -93,20 +93,19 @@ def df_to_excel_bytes_safe(df, sheet_name="Sheet1"):
             for idx, col in enumerate(df.columns, 1):
                 letter = get_column_letter(idx)
                 cl = str(col).lower()
-                if "student" in cl:
-                    ws.column_dimensions[letter].width = 24
-                elif "score" in cl:
-                    ws.column_dimensions[letter].width = 12
-                elif "cefr" in cl:
-                    ws.column_dimensions[letter].width = 10
-                elif "preview" in cl:
-                    ws.column_dimensions[letter].width = 45
-                elif "feedback" in cl or "full" in cl:
-                    ws.column_dimensions[letter].width = 80
-                elif "essay" in cl:
-                    ws.column_dimensions[letter].width = 70
-                else:
-                    ws.column_dimensions[letter].width = 20
+                if "student" in cl: ws.column_dimensions[letter].width = 22
+                elif "score" in cl: ws.column_dimensions[letter].width = 12
+                elif "cefr" in cl: ws.column_dimensions[letter].width = 10
+                elif "preview" in cl: ws.column_dimensions[letter].width = 35
+                elif "feedback" in cl or "full" in cl: ws.column_dimensions[letter].width = 50
+                elif "essay" in cl: ws.column_dimensions[letter].width = 50
+                else: ws.column_dimensions[letter].width = 20
+                for cell in ws[letter]:
+                    try:
+                        cell.alignment = cell.alignment.copy(wrap_text=True, vertical='top')
+                    except:
+                        pass
+            ws.freeze_panes = 'A2'
         return output.getvalue(), "xlsx"
     except Exception:
         try:
