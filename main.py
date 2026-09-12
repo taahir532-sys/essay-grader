@@ -16,7 +16,7 @@ except ImportError:
 
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
-st.set_page_config(page_title="TEFLMate v6.0.3 Pro - Classroom", page_icon="📝", layout="centered")
+st.set_page_config(page_title="TEFLMate v6.0.6 Pro - Classroom", page_icon="📝", layout="centered")
 st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:10px;height:45px;font-weight:bold;width:100%;} div[data-testid="stLinkButton"]>a{background:#111!important;color:white!important;border-radius:10px!important;height:45px!important;font-weight:bold!important;width:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;}</style>""", unsafe_allow_html=True)
 
 if "uses" not in st.session_state:
@@ -55,24 +55,28 @@ def get_status():
     if is_pro():
         days = (st.session_state.pro_expiry - datetime.now()).days + 1
         plan = st.session_state.active_plan
-        if plan == "WEEK49":
-            return f"✅ R49 Weekly ACTIVE - {days} days left - Unlimited + Batch 50"
-        elif plan == "MONTH99":
-            return f"✅ R99 Monthly ACTIVE - {days} days left - Unlimited + Batch 50"
-        elif plan == "YEAR799":
-            return f"✅ R799 Yearly ACTIVE - {days} days left - Unlimited + Batch 50"
-        else:
-            return f"PRO ACTIVE - {days} days left - Unlimited + Batch 50"
+        if plan == "WEEK49": return f"✅ R49 Weekly ACTIVE - {days} days left - Unlimited + Batch 50"
+        elif plan == "MONTH99": return f"✅ R99 Monthly ACTIVE - {days} days left - Unlimited + Batch 50"
+        elif plan == "YEAR799": return f"✅ R799 Yearly ACTIVE - {days} days left - Unlimited + Batch 50"
+        else: return f"PRO ACTIVE - {days} days left - Unlimited + Batch 50"
     else:
         remaining = 3 - st.session_state.uses
-        if remaining <= 0:
-            return f"❌ FREE - 0 left (Pay to continue)"
-        if st.session_state.active_plan == "ONCE10" and remaining > 3:
-            return f"✅ R10 Active - {remaining} essays left (Once-off R10 - No Batch)"
+        if remaining <= 0: return f"❌ FREE - 0 left (Pay to continue)"
+        if st.session_state.active_plan == "ONCE10" and remaining > 3: return f"✅ R10 Active - {remaining} essays left (Once-off R10 - No Batch)"
         return f"FREE - {remaining} left"
 
 def clean(text):
     return unicodedata.normalize('NFKD', text or "").encode('ascii', 'ignore').decode('ascii')
+
+def clean_feedback(text):
+    if not text: return ""
+    t = text
+    t = re.sub(r'\*\*', '', t)
+    t = re.sub(r'###', '', t)
+    t = re.sub(r'##', '', t)
+    t = re.sub(r'\|', ' | ', t)
+    t = re.sub(r'\n{3,}', '\n\n', t)
+    return t.strip()
 
 def extract_score_cefr(text):
     try:
@@ -96,16 +100,16 @@ def df_to_excel_bytes_safe(df, sheet_name="Sheet1"):
                 if "student" in cl: ws.column_dimensions[letter].width = 22
                 elif "score" in cl: ws.column_dimensions[letter].width = 12
                 elif "cefr" in cl: ws.column_dimensions[letter].width = 10
-                elif "preview" in cl: ws.column_dimensions[letter].width = 35
-                elif "feedback" in cl or "full" in cl: ws.column_dimensions[letter].width = 50
+                elif "preview" in cl: ws.column_dimensions[letter].width = 40
+                elif "feedback" in cl or "full" in cl: ws.column_dimensions[letter].width = 60
                 elif "essay" in cl: ws.column_dimensions[letter].width = 50
                 else: ws.column_dimensions[letter].width = 20
                 for cell in ws[letter]:
                     try:
                         cell.alignment = cell.alignment.copy(wrap_text=True, vertical='top')
-                    except:
-                        pass
+                    except: pass
             ws.freeze_panes = 'A2'
+            ws.auto_filter.ref = ws.dimensions
         return output.getvalue(), "xlsx"
     except Exception:
         try:
@@ -209,7 +213,7 @@ def create_branded_pdf(original_essay, ai_result, target_level, student_name="St
     pdf.cell(0, 7, f"Student: {student_name} | Level: {target_level} | Date: {datetime.now().strftime('%d %b %Y')}", ln=True)
     pdf.ln(2)
     pdf.set_font("Arial", '', 10)
-    pdf.multi_cell(0, 6, clean(ai_result))
+    pdf.multi_cell(0, 6, clean(clean_feedback(ai_result)))
     return pdf.output(dest='S').encode('latin-1')
 
 def grade_with_groq(essay_text, level):
@@ -218,7 +222,7 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
-st.title("📝 TEFLMate v6.0.3 - Classroom Edition")
+st.title("📝 TEFLMate v6.0.6 - Classroom Edition")
 st.caption(f"Grade 50 essays in 4 minutes • Class Reports + Excel • Pricing in {st.session_state.geo['code']}")
 
 with st.sidebar:
@@ -301,7 +305,7 @@ with tab1:
         with st.spinner("Grading..."):
             result_text = grade_with_groq(essay, level)
             if not is_pro(): st.session_state.uses += 1
-            st.markdown(result_text)
+            st.markdown(clean_feedback(result_text))
             st.download_button("📄 Download PDF", create_branded_pdf(essay, result_text, level, "Student"), file_name=f"Report_{level}.pdf")
 
 with tab2:
@@ -366,8 +370,9 @@ with tab2:
         for i, es in enumerate(essays):
             res_text = grade_with_groq(es[:2000], level_b)
             score, cefr = extract_score_cefr(res_text)
-            results.append({"Student": names[i], "Essay": es[:100], "Score": f"{score}/10", "CEFR": cefr, "Result": res_text})
-            excel_rows.append({"Student Name": names[i], "Score /10": score, "CEFR": cefr, "Essay Preview": es[:200], "Full Feedback": res_text[:1500]})
+            clean_res = clean_feedback(res_text)
+            results.append({"Student": names[i], "Essay": es[:100], "Score": f"{score}/10", "CEFR": cefr, "Result": clean_res})
+            excel_rows.append({"Student Name": names[i], "Score /10": score, "CEFR": cefr, "Essay Preview": es[:200], "Full Feedback": clean_res[:1500]})
             progress.progress((i+1)/len(essays))
         st.session_state.b_results = results
         st.session_state.b_rows = excel_rows
@@ -427,7 +432,7 @@ with tab3:
         if st.button("GRADE PDF TEXT ->"):
             result_text = grade_with_groq(extracted, level_p)
             if not is_pro(): st.session_state.uses += 1
-            st.markdown(result_text)
+            st.markdown(clean_feedback(result_text))
             st.download_button("📄 Download PDF", create_branded_pdf(extracted, result_text, level_p, "PDF Student"), file_name=f"PDF_{level_p}.pdf")
     if image_bytes and st.button("READ & GRADE PHOTO ->"):
         with st.spinner("Reading..."):
@@ -439,7 +444,7 @@ with tab3:
         if st.button("GRADE THIS TEXT ->"):
             result_text = grade_with_groq(edited, level_p)
             if not is_pro(): st.session_state.uses += 1
-            st.markdown(result_text)
+            st.markdown(clean_feedback(result_text))
             st.download_button("📄 Download PDF", create_branded_pdf(edited, result_text, level_p, "Photo Student"), file_name=f"Photo_{level_p}.pdf")
 with tab4:
     st.markdown("## 📘 How Target Levels Work")
@@ -461,4 +466,4 @@ with col2:
     st.link_button(f"📧 Email proof", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
 with col3:
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-st.caption("TEFLMate v6.0.3 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
+st.caption("TEFLMate v6.0.6 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
