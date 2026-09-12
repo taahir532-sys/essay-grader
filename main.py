@@ -8,11 +8,11 @@ import base64
 import requests
 import re
 from io import BytesIO
+from openpyxl.utils import get_column_letter
 try:
     import fitz
 except ImportError:
     fitz = None
-from openpyxl.utils import get_column_letter
 
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
@@ -29,10 +29,10 @@ if "pay_links" not in st.session_state:
     st.session_state.pay_links = {}
 if "pay_refs" not in st.session_state:
     st.session_state.pay_refs = {}
-if "batch_results" not in st.session_state:
-    st.session_state.batch_results = None
-    st.session_state.batch_excel_rows = None
-    st.session_state.batch_level = None
+if "b_results" not in st.session_state:
+    st.session_state.b_results = None
+    st.session_state.b_rows = None
+    st.session_state.b_lvl = None
 if "geo" not in st.session_state:
     try:
         ip_data = requests.get("https://ipapi.co/json/", timeout=3).json()
@@ -92,18 +92,18 @@ def df_to_excel_bytes_safe(df, sheet_name="Sheet1"):
             ws = writer.sheets[sheet_name]
             for idx, col in enumerate(df.columns, 1):
                 letter = get_column_letter(idx)
-                col_low = str(col).lower()
-                if "student" in col_low:
+                cl = str(col).lower()
+                if "student" in cl:
                     ws.column_dimensions[letter].width = 24
-                elif "score" in col_low:
+                elif "score" in cl:
                     ws.column_dimensions[letter].width = 12
-                elif "cefr" in col_low:
+                elif "cefr" in cl:
                     ws.column_dimensions[letter].width = 10
-                elif "preview" in col_low:
-                    ws.column_dimensions[letter].width = 40
-                elif "feedback" in col_low or "full" in col_low:
+                elif "preview" in cl:
+                    ws.column_dimensions[letter].width = 45
+                elif "feedback" in cl or "full" in cl:
                     ws.column_dimensions[letter].width = 80
-                elif "essay" in col_low:
+                elif "essay" in cl:
                     ws.column_dimensions[letter].width = 70
                 else:
                     ws.column_dimensions[letter].width = 20
@@ -370,16 +370,16 @@ with tab2:
             results.append({"Student": names[i], "Essay": es[:100], "Score": f"{score}/10", "CEFR": cefr, "Result": res_text})
             excel_rows.append({"Student Name": names[i], "Score /10": score, "CEFR": cefr, "Essay Preview": es[:200], "Full Feedback": res_text[:1500]})
             progress.progress((i+1)/len(essays))
-        st.session_state.batch_results = results
-        st.session_state.batch_excel_rows = excel_rows
-        st.session_state.batch_level = level_b
+        st.session_state.b_results = results
+        st.session_state.b_rows = excel_rows
+        st.session_state.b_lvl = level_b
         st.rerun()
 
-    if st.session_state.batch_results:
-        results = st.session_state.batch_results
-        excel_rows = st.session_state.batch_excel_rows
-        level_b_saved = st.session_state.batch_level or level_b
-        st.success(f"Done! {len(results)} graded - You can now download both files without losing data")
+    if st.session_state.b_results:
+        results = st.session_state.b_results
+        excel_rows = st.session_state.b_rows
+        level_b_saved = st.session_state.b_lvl
+        st.success(f"Done! {len(results)} graded - Download both files, no re-grade needed")
         df_res = pd.DataFrame(results)
         avg_score = sum([r["Score /10"] if isinstance(r["Score /10"], int) else 0 for r in excel_rows]) / len(excel_rows) if excel_rows else 0
         st.markdown("### 📊 Class Dashboard")
@@ -403,10 +403,10 @@ with tab2:
             pdf.add_page(); pdf.set_font("Arial", 'B', 12); pdf.cell(0, 10, f"{r['Student']} - {r['Score']} - {r['CEFR']}", ln=True)
             pdf.set_font("Arial", '', 10); pdf.multi_cell(0, 6, clean(r["Result"]))
         st.download_button("📄 Download All 50 Named Reports PDF", pdf.output(dest='S').encode('latin-1'), file_name=f"Batch_50_Named_{level_b_saved}.pdf", key="grades_pdf")
-        if st.button("Clear Results - Start New Batch"):
-            st.session_state.batch_results = None
-            st.session_state.batch_excel_rows = None
-            st.session_state.batch_level = None
+        if st.button("Clear Results - Start New Batch", key="clear_batch"):
+            st.session_state.b_results = None
+            st.session_state.b_rows = None
+            st.session_state.b_lvl = None
             st.rerun()
 
 with tab3:
