@@ -17,7 +17,7 @@ except ImportError:
 
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
-st.set_page_config(page_title="TEFLMate v6.0.7 Pro - Phase 3 Principal", page_icon="📝", layout="centered")
+st.set_page_config(page_title="TEFLMate v6.0.7 Pro", page_icon="📝", layout="centered")
 st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:10px;height:45px;font-weight:bold;width:100%;} div[data-testid="stLinkButton"]>a{background:#111!important;color:white!important;border-radius:10px!important;height:45px!important;font-weight:bold!important;width:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;}</style>""", unsafe_allow_html=True)
 
 if "uses" not in st.session_state:
@@ -247,8 +247,9 @@ def grade_with_groq(essay_text, level):
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
     return res.choices[0].message.content
 
-st.title("📝 TEFLMate v6.0.7 - Phase 3 Principal Pack")
-st.caption(f"Phase 3: Charts + Principal Report + Free WhatsApp Share | Pricing in {st.session_state.geo['code']}")
+# CLEAN HEADER - NO PHASE 3 TEXT
+st.title("📝 TEFLMate v6.0.7 Pro")
+st.caption(f"AI Essay Grader for Teachers | Fast • Accurate • CEFR Aligned")
 
 with st.sidebar:
     st.markdown("### 🔑 Your Plan")
@@ -270,7 +271,7 @@ with st.sidebar:
     if g['code'] == "ZAR":
         st.markdown(f"#### 💰 1-Click Pay ({g['code']})")
         st.caption("1. Tap a button below 2. Pay on Paystack 3. Return here 4. Tap Check Payment to unlock")
-        email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email_v607")
+        email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email_clean")
         if not st.session_state.pay_links and email:
             with st.spinner("Loading pay options..."):
                 for plan, amt in [("ONCE10",1000),("WEEK49",4900),("MONTH99",9900),("YEAR799",79900)]:
@@ -302,8 +303,24 @@ with st.sidebar:
     st.divider()
     st.markdown("#### 🌍 Pay Globally")
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
+    st.divider()
+    st.caption("Loved it? Send proof and I'll send your code instantly ❤️")
+    code = st.text_input("Got a code?", placeholder="Paste your code here", type="password").strip().upper()
+    if st.button("Unlock Code"):
+        now = datetime.now()
+        def set_plan(p): st.session_state.active_plan = p
+        if code == "TEACH10":
+            st.session_state.uses -= 10; set_plan("ONCE10"); st.success("Unlocked R10!"); st.rerun()
+        elif code == "WEEK49":
+            st.session_state.pro_expiry = now + timedelta(days=7); set_plan("WEEK49"); st.success("Weekly unlocked!"); st.rerun()
+        elif code in ["MONTH99","TEFL2026"]:
+            st.session_state.pro_expiry = now + timedelta(days=30); set_plan("MONTH99"); st.success("Monthly unlocked!"); st.rerun()
+        elif code == "YEAR799":
+            st.session_state.pro_expiry = now + timedelta(days=365); set_plan("YEAR799"); st.success("Yearly unlocked!"); st.rerun()
+        else:
+            st.error("That code didn't work")
 
-tab1, tab2, tab3, tab4 = st.tabs(["Single Essay", "Batch 50 PRO + Charts", "📸 Photo / PDF", "📘 Guide"])
+tab1, tab2, tab3, tab4 = st.tabs(["Single Essay", "Batch 50 PRO", "📸 Photo / PDF", "📘 Guide"])
 with tab1:
     essay = st.text_area("Paste Student Essay:", height=180, placeholder="I broken my leg")
     level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level")
@@ -317,8 +334,8 @@ with tab1:
             st.download_button("📄 Download PDF", create_branded_pdf(essay, result_text, level, "Student"), file_name=f"Report_{level}.pdf")
 
 with tab2:
-    st.markdown("### 🚀 Phase 3 - Batch 50 + Principal Dashboard (FREE)")
-    st.info(f"Monthly {g['symbol']}{g['monthly']} unlocks: 50 essays + Excel A1 clean + Charts + Principal Report + Free WhatsApp Share")
+    st.markdown("### 🚀 Batch 50 - Principal Dashboard")
+    st.info(f"Monthly {g['symbol']}{g['monthly']} unlocks: 50 essays + Clean Excel + Charts + Principal Report + WhatsApp Share")
     sample_df = pd.DataFrame({
         "student_name": ["Thandi Mabaso", "John Smith", "Aisha Khan", "Lerato Dlamini", "Sipho Nkosi"],
         "essay": [
@@ -331,10 +348,10 @@ with tab2:
     })
     template_bytes, template_type = df_to_excel_bytes_safe(sample_df, "Essays")
     if template_type == "xlsx":
-        st.download_button("📥 Download Excel Template (50 Students) - Proper 2 Columns", template_bytes, file_name="TEFLMate_Batch_Template_50_Phase3.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="template_btn")
+        st.download_button("📥 Download Excel Template (50 Students)", template_bytes, file_name="TEFLMate_Batch_Template_50.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="template_btn")
     else:
-        st.download_button("📥 Download CSV Template (Add openpyxl for Excel)", template_bytes, file_name="TEFLMate_Batch_Template_50_Phase3.csv", mime="text/csv", key="template_btn")
-    st.caption("✅ Fill 2 columns: student_name | essay. Add your 50 students and upload below.")
+        st.download_button("📥 Download CSV Template", template_bytes, file_name="TEFLMate_Batch_Template_50.csv", mime="text/csv", key="template_btn")
+    st.caption("✅ Fill 2 columns: student_name | essay")
     st.divider()
     school_name = st.text_input("School Name for Principal Report:", value="My School", key="school_name_input")
     level_b = st.selectbox("Target Level for batch:", ["A1","A2","B1","B2","C1","C2"], key="batch_level")
@@ -390,7 +407,7 @@ with tab2:
         level_b = st.session_state.batch_results["level"]
         school_name = st.session_state.batch_results["school"]
         avg_score = sum([r["Score /10"] if isinstance(r["Score /10"], int) else 0 for r in excel_rows]) / len(excel_rows) if excel_rows else 0
-        st.markdown("### 📊 Class Dashboard - Phase 3 Principal Pack")
+        st.markdown("### 📊 Class Dashboard")
         c1, c2, c3 = st.columns(3)
         c1.metric("Average Score", f"{avg_score:.1f} /10")
         c2.metric("Total Graded", f"{len(results)}")
@@ -399,7 +416,7 @@ with tab2:
             worst = min(excel_rows, key=lambda x: x["Score /10"])
             c3.metric("Top Student", f"{best['Student Name']} ({best['Score /10']}/10)")
             st.caption(f"Weakest: {worst['Student Name']} ({worst['Score /10']}/10) - Needs support")
-        st.markdown("#### 📈 Principal Charts (FREE)")
+        st.markdown("#### 📈 Charts")
         col_chart1, col_chart2 = st.columns(2)
         with col_chart1:
             fig1, ax1 = plt.subplots()
@@ -424,14 +441,14 @@ with tab2:
         col_d1, col_d2 = st.columns(2)
         with col_d1:
             if grades_type == "xlsx":
-                st.download_button("📊 Download Class Grades Excel A1 Clean", grades_bytes, file_name=f"Class_Grades_{level_b}_{datetime.now().strftime('%Y%m%d')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                st.download_button("📊 Download Class Grades Excel", grades_bytes, file_name=f"Class_Grades_{level_b}_{datetime.now().strftime('%Y%m%d')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             else:
                 st.download_button("📊 Download Class Grades CSV", grades_bytes, file_name=f"Class_Grades_{level_b}_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv")
         with col_d2:
             principal_pdf_bytes = create_principal_pdf(excel_rows, level_b, avg_score, school_name)
             st.download_button("🏫 Download Principal Report PDF", principal_pdf_bytes, file_name=f"Principal_Report_{school_name}_{level_b}.pdf")
         st.divider()
-        st.markdown("#### 📲 Free WhatsApp Share - No API Cost (Phase 3 Workaround)")
+        st.markdown("#### 📲 Free WhatsApp Share - No API Cost")
         st.caption("Tap to share each student's result to parents via WhatsApp - uses phone's WhatsApp, not paid API")
         for r in results[:10]:
             wa_text = f"TEFLMate Report - {r['Student']}: Score {r['Score']} CEFR {r['CEFR']} - {school_name} - Level {level_b}. Feedback: {r['Result'][:200]}"
@@ -496,4 +513,5 @@ with col2:
     st.link_button(f"📧 Email proof", f"mailto:{YOUR_EMAIL}?subject=TEFLMate Payment Proof")
 with col3:
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-st.caption("TEFLMate v6.0.7 Phase 3 Principal Pack • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
+# CLEAN FOOTER - NO PHASE 3 TEXT
+st.caption("TEFLMate v6.0.7 Pro • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
