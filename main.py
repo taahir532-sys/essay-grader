@@ -1,9 +1,7 @@
 import streamlit as st
-
 if "ping" in st.query_params or "uptime" in st.query_params or "health" in st.query_params:
     st.write("OK - TEFLMate Awake")
     st.stop()
-
 import streamlit.components.v1 as components
 components.html("""
 <script>
@@ -15,7 +13,6 @@ if (hash && hash.includes('access_token')) {
 }
 </script>
 """, height=0)
-
 from groq import Groq
 from datetime import datetime, timedelta
 from fpdf import FPDF
@@ -31,24 +28,19 @@ try:
 except ImportError:
     fitz = None
 from supabase import create_client
-
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_ANON = st.secrets["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_ANON)
-
 @st.cache_resource
 def get_groq():
     return Groq(api_key=st.secrets["GROQ_API_KEY"])
-
 YOUR_EMAIL = "taahir532@gmail.com"
 st.set_page_config(page_title="TEFLMate - Class Portfolio", page_icon="📚", layout="wide")
-
 st.markdown("""<style>
 .stButton>button {background:#111;color:white;border-radius:10px;height:48px;font-weight:bold;width:100%;border:1px solid #111;}
 div[data-testid="stLinkButton"]>a{background:#111!important;color:white!important;border-radius:10px!important;height:48px!important;font-weight:bold!important;display:flex!important;align-items:center!important;justify-content:center!important;}
 button[data-baseweb="tab"] {font-size:13px; padding:8px 10px;}
 </style>""", unsafe_allow_html=True)
-
 if "uses" not in st.session_state: st.session_state.uses = 0
 if "pro_expiry" not in st.session_state: st.session_state.pro_expiry = None
 if "active_plan" not in st.session_state: st.session_state.active_plan = None
@@ -75,7 +67,6 @@ if "geo" not in st.session_state:
     elif country == "GB": st.session_state.geo = {"symbol":"£", "weekly":"3.99", "monthly":"6.99", "yearly":"55", "once":"0.99", "code":"GBP"}
     elif country in ["DE","FR","NL","IT","ES","PT","IE"]: st.session_state.geo = {"symbol":"€", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"EUR"}
     else: st.session_state.geo = {"symbol":"$", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"USD"}
-
 q_rec = st.query_params
 has_token = False
 try:
@@ -83,7 +74,6 @@ try:
         has_token = True
 except:
     pass
-
 if has_token:
     try:
         access_token = q_rec.get("access_token", "")
@@ -102,8 +92,8 @@ if has_token:
         pass
     st.title("🔐 TEFLMate - Set New Password")
     st.info("Reset link detected - set your new password below")
-    new_p = st.text_input("New Password (6+ chars)", type="password", key="rec_new_final_1944")
-    conf_p = st.text_input("Confirm", type="password", key="rec_conf_final_1944")
+    new_p = st.text_input("New Password (6+ chars)", type="password", key="rec_new_final_1945")
+    conf_p = st.text_input("Confirm", type="password", key="rec_conf_final_1945")
     if st.button("✅ UPDATE PASSWORD & LOGIN", type="primary", use_container_width=True):
         if len(new_p) < 6: st.warning("6+ chars")
         elif new_p!= conf_p: st.error("No match")
@@ -114,7 +104,6 @@ if has_token:
                 st.session_state.user=None; st.session_state.teacher_id=None; st.balloons()
             except Exception as e: st.error(f"Update failed: {e}")
     st.stop()
-
 if st.session_state.user is None:
     try:
         sess = supabase.auth.get_session()
@@ -135,13 +124,12 @@ if st.session_state.user is None:
                         st.session_state.uses = -int(td.data[0].get("bonus_grades",0))
                     except: pass
     except: pass
-
 def login_screen():
     st.title("📚 TEFLMate - Class Portfolio")
     st.caption("Photo-grade handwritten homework • Track progress • Parent reports in 7 languages")
     t1, t2 = st.tabs(["🔑 Login", "✨ Sign Up"])
     with t1:
-        with st.form("login_form_final_1944"):
+        with st.form("login_form_final_1945"):
             email = st.text_input("Email"); password = st.text_input("Password", type="password")
             if st.form_submit_button("🚀 Login", use_container_width=True, type="primary"):
                 try:
@@ -162,7 +150,7 @@ def login_screen():
                     st.rerun()
                 except Exception as e: st.error(f"Login failed: {e}")
         with st.expander("🔓 Forgot Password? - Reset Link"):
-            fp_email = st.text_input("Email to reset:", key="fp_email_1944")
+            fp_email = st.text_input("Email to reset:", key="fp_email_1945")
             if st.session_state.last_reset and (datetime.now()-st.session_state.last_reset).total_seconds()<3600:
                 st.warning(f"Wait {int(60-(datetime.now()-st.session_state.last_reset).total_seconds()//60)} mins")
             else:
@@ -172,8 +160,8 @@ def login_screen():
                         st.session_state.last_reset = datetime.now(); st.success(f"Sent to {fp_email} - check email")
                     except Exception as e: st.error(str(e))
     with t2:
-        with st.form("signup_form_final_1944"):
-            email2 = st.text_input("New Email", key="s_email_1944"); password2 = st.text_input("New Password", type="password", key="s_pass_1944"); school = st.text_input("School Name", value="My School")
+        with st.form("signup_form_final_1945"):
+            email2 = st.text_input("New Email", key="s_email_1945"); password2 = st.text_input("New Password", type="password", key="s_pass_1945"); school = st.text_input("School Name", value="My School")
             if st.form_submit_button("Create Account", use_container_width=True):
                 try:
                     supabase.auth.sign_up({"email": email2, "password": password2})
@@ -181,9 +169,7 @@ def login_screen():
                     st.success("Created! Go to Login tab.")
                 except Exception as e: st.error(str(e))
     st.stop()
-
 if not st.session_state.user: login_screen()
-
 def is_pro(): return st.session_state.pro_expiry is not None and datetime.now() < st.session_state.pro_expiry
 def get_status():
     if is_pro():
@@ -194,12 +180,10 @@ def get_status():
         if remaining <=0: return "❌ FREE - 0 left"
         if st.session_state.active_plan and "ONCE" in str(st.session_state.active_plan) and remaining >3: return f"✅ {st.session_state.active_plan} - {remaining} left"
         return f"FREE - {remaining} left"
-
 def clean(text): return unicodedata.normalize('NFKD', text or "").encode('ascii', 'ignore').decode('ascii')
 def clean_feedback_for_excel(text):
     if not text: return ""
     t = clean(text); t = re.sub(r'\*\*|###|##|__|\*\*', '', t); return t.strip()
-
 def extract_score_cefr(text):
     try:
         text_norm = text.replace(",", ".")
@@ -214,7 +198,6 @@ def extract_score_cefr(text):
         return score, cefr, ""
     except:
         return 5, "B1", ""
-
 def df_to_excel_bytes_safe(df, sheet_name="Sheet1"):
     try:
         output = BytesIO()
@@ -232,7 +215,6 @@ def df_to_excel_bytes_safe(df, sheet_name="Sheet1"):
                 ws.column_dimensions[col_letter].width = min(50, max(12, max_len + 2))
         return output.getvalue(), "xlsx"
     except: return df.to_csv(index=False).encode('utf-8'), "csv"
-
 def save_pro_to_db(pro_expiry, active_plan, bonus_delta=0):
     try:
         email = st.session_state.user.email if st.session_state.user else YOUR_EMAIL
@@ -259,9 +241,7 @@ def save_pro_to_db(pro_expiry, active_plan, bonus_delta=0):
             supabase.table("teachers").update(data).eq("email", email).execute()
         return True
     except Exception as e:
-        st.warning(f"DB save failed: {e}")
         return False
-
 def init_paystack(email, amount_kobo, plan_code):
     try:
         secret = st.secrets["PAYSTACK_SECRET_KEY"]; headers = {"Authorization": f"Bearer {secret}", "Content-Type": "application/json"}
@@ -288,42 +268,26 @@ def unlock_paystack(v):
     else:
         st.session_state.active_plan = active
     return True
-
 def verify_all_refs():
     for ref in list(st.session_state.pay_refs.values()):
         v = verify_paystack(ref)
         if v.get("status") and v.get("data", {}).get("status") == "success":
             if unlock_paystack(v): st.session_state.pay_refs = {}; st.session_state.pay_links = {}; st.query_params.clear(); return True
     return False
-
 q = st.query_params
 if "reference" in q:
     if unlock_paystack(verify_paystack(q["reference"])): st.query_params.clear(); st.session_state.pay_refs = {}; st.session_state.pay_links = {}
 else:
     if st.session_state.pay_refs: verify_all_refs()
-
 def extract_text_from_image(image_bytes):
     client = get_groq()
     b64 = base64.b64encode(image_bytes).decode('utf-8')
     try:
-        res = client.chat.completions.create(
-            model="qwen/qwen3.6-27b",
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
-                ]
-            }],
-            temperature=0
-        )
+        res = client.chat.completions.create(model="qwen/qwen3.6-27b", messages=[{"role": "user", "content": [{"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]}], temperature=0)
         txt = res.choices[0].message.content
-        if "</think>" in txt:
-            txt = txt.split("</think>")[-1].strip()
+        if "</think>" in txt: txt = txt.split("</think>")[-1].strip()
         return txt.strip()
-    except Exception as e:
-        return f"OCR_ERROR: {e}"
-
+    except Exception as e: return f"OCR_ERROR: {e}"
 def extract_text_from_pdf(pdf_bytes):
     if not fitz: return "Add PyMuPDF"
     try:
@@ -331,7 +295,6 @@ def extract_text_from_pdf(pdf_bytes):
         if len(text.strip()) < 30 and len(doc) > 0: pix = doc[0].get_pixmap(dpi=200); text = extract_text_from_image(pix.tobytes("jpeg"))
         return text
     except Exception as e: return f"PDF_ERROR: {e}"
-
 def create_branded_pdf(original_essay, ai_result, target_level, student_name="Student"):
     pdf = FPDF(); pdf.set_auto_page_break(auto=True, margin=15); pdf.add_page()
     pdf.set_fill_color(17, 24, 39); pdf.rect(0, 0, 210, 32, 'F'); pdf.set_y(7)
@@ -340,7 +303,6 @@ def create_branded_pdf(original_essay, ai_result, target_level, student_name="St
     pdf.set_font("Arial", '', 10); pdf.multi_cell(0, 6, clean(ai_result))
     out = pdf.output(dest='S')
     return out.encode('latin-1') if isinstance(out, str) else bytes(out)
-
 def create_principal_pdf(excel_rows, level, avg_score, school_name="School"):
     pdf = FPDF(); pdf.set_auto_page_break(auto=True, margin=15); pdf.add_page()
     pdf.set_fill_color(17, 24, 39); pdf.rect(0, 0, 210, 30, 'F'); pdf.set_y(7)
@@ -356,15 +318,12 @@ def create_principal_pdf(excel_rows, level, avg_score, school_name="School"):
         pdf.cell(70, 7, clean(r['Student Name'])[:35], border=1); pdf.cell(25, 7, f"{score}/10", border=1, align='C'); pdf.cell(25, 7, r['CEFR'], border=1, align='C'); pdf.cell(70, 7, status, border=1); pdf.ln()
     out = pdf.output(dest='S')
     return out.encode('latin-1') if isinstance(out, str) else bytes(out)
-
 def detect_ai_risk(essay_text):
     text = essay_text.lower().strip()
     if len(text) < 10: return "Too Short"
     if "delve" in text and "tapestry" in text: return "⚠️ Possible AI"
     return "✅ Human"
-
 def grade_with_groq(essay_text, level):
-    # V1944 DETERMINISTIC + CACHE
     cache_key = (essay_text.strip()[:500] + "|" + level)
     if cache_key in st.session_state.grade_cache:
         return st.session_state.grade_cache[cache_key]
@@ -385,27 +344,18 @@ def grade_with_groq(essay_text, level):
     else:
         level_inst = f"Target {level} - standard Cambridge grading. ALWAYS integer score like 6/10, never 7.5/10. Be deterministic."
     prompt = f"You are kind Cambridge TEFL examiner for {level}. {level_inst}. {std_inst}. {lang_inst}. {rubric} Grade this essay: {essay_text}. ASCII only. Score must be integer X/10. Structure: 1.CEFR+{std} 2.Score/10 integer 3.AI Check 4.Summary 5.2 Strengths 6.Table Mistake|Correction|Why 7.Corrected version 8.Parent Summary"
-    res = client.chat.completions.create(
-        model="openai/gpt-oss-20b",
-        messages=[{"role":"user","content":prompt}],
-        temperature=0,
-        seed=42
-    )
+    res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}], temperature=0, seed=42)
     result = res.choices[0].message.content
     st.session_state.grade_cache[cache_key] = result
     return result
-
 def save_essay_db(student_name, essay_text, level, score, cefr, feedback):
     try:
         if not st.session_state.teacher_id:
-            st.error("No teacher_id - relogin")
             return False
         supabase.table("essays").insert({"teacher_id": st.session_state.teacher_id, "student_name": student_name, "essay_text": essay_text, "level": level, "score": score, "cefr": cefr, "feedback": feedback}).execute()
         return True
     except Exception as e:
-        st.error(f"DB save error: {e}")
         return False
-
 col_title, col_user = st.columns([3,1])
 with col_title:
     st.title("📚 TEFLMate - Class Portfolio")
@@ -414,17 +364,15 @@ with col_user:
     st.info(f"👤 {st.session_state.user.email[:20]} | {get_status()}" if st.session_state.user else "Not logged")
     if st.session_state.user and st.button("Logout", use_container_width=True):
         supabase.auth.sign_out(); st.session_state.user=None; st.session_state.teacher_id=None; st.rerun()
-
 if st.session_state.promo_success:
     st.balloons()
     st.success("🎉 Code applied - saved!")
     st.session_state.promo_success = False
-
 with st.sidebar:
     st.markdown("### 🔑 Your Plan"); st.info(get_status())
     with st.expander("🔐 Change Password"):
-        new_pass = st.text_input("New Password", type="password", key="new_pass_1944")
-        confirm_pass = st.text_input("Confirm New Password", type="password", key="confirm_pass_1944")
+        new_pass = st.text_input("New Password", type="password", key="new_pass_1945")
+        confirm_pass = st.text_input("Confirm New Password", type="password", key="confirm_pass_1945")
         if st.button("Update Password", use_container_width=True, type="primary"):
             if not new_pass or len(new_pass) < 6: st.warning("6+ chars")
             elif new_pass!= confirm_pass: st.error("No match")
@@ -434,9 +382,9 @@ with st.sidebar:
     st.divider()
     g = st.session_state.geo
     st.markdown(f"#### 💰 Plans ({g['code']})")
-    with st.expander("🎟️ Enter Code / Promo - RESTORED"):
-        promo = st.text_input("Promo Code:", value="", placeholder="Enter code", key="promo_code_1944")
-        if st.button("✅ Redeem Code", use_container_width=True, key="redeem_btn_1944"):
+    with st.expander("🎟️ Enter Code / Promo"):
+        promo = st.text_input("Promo Code:", value="", placeholder="Enter code", key="promo_code_1945")
+        if st.button("✅ Redeem Code", use_container_width=True, key="redeem_btn_1945"):
             code = promo.strip().upper()
             code_map = {"TEFL2024":30,"KEEP99":30,"TEACHFREE":30,"BRAZIL50":30,"INDIA50":30,"MONTH99":30,"MONTHLY":30,"MONTH":30,"WEEK49":7,"WEEKLY":7,"WEEK":7,"YEAR799":365,"YEARLY":365,"YEAR":365,"ONCE10":0,"TEST10":0,"R10":0}
             if code in code_map:
@@ -446,7 +394,7 @@ with st.sidebar:
                 else:
                     new_expiry = datetime.now() + timedelta(days=days); st.session_state.pro_expiry = new_expiry; st.session_state.active_plan = f"PROMO-{code}"; save_pro_to_db(new_expiry, f"PROMO-{code}", 0); st.session_state.promo_success = True; st.rerun()
             elif code!= "": st.error(f"Invalid code: {code}")
-    email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email_1944")
+    email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email_1945")
     if not st.session_state.pay_links and email:
         with st.spinner("Loading..."):
             for plan, amt in [("ONCE10",1000),("WEEK49",4900),("MONTH99",9900),("YEAR799",79900)]:
@@ -463,9 +411,7 @@ with st.sidebar:
     st.markdown("#### 🌎 7 Languages")
     st.session_state.feedback_lang = st.selectbox("Parent Feedback Language:", ["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese"], index=["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese"].index(st.session_state.feedback_lang))
     st.session_state.grading_standard = st.selectbox("Standard:", ["CEFR","IELTS","TOEFL","US Grade"], index=["CEFR","IELTS","TOEFL","US Grade"].index(st.session_state.grading_standard))
-
 tab4, tab1, tab3, tab2, tab5, tab6 = st.tabs(["📚 Portfolio","✍️ Grade Essay","📸 Photo/PDF","⚡ Batch 50 PRO","📘 Guide","🚀 SUPER 7Lang"])
-
 with tab4:
     st.markdown("### 📚 Your Class Portfolio")
     try:
@@ -486,26 +432,25 @@ with tab4:
                 avg = float(df['score'].mean()) if len(df) else 0
                 rows_for_pdf = [{"Student Name": r["student_name"], "Score /10": int(r["score"]) if r["score"] else 0, "CEFR": r["cefr"], "AI Check": "OK", "Full Feedback": ""} for r in rows.data]
                 level_pdf = df.iloc[0]['level'] if len(df) else "B1"
-                st.download_button("📄 Principal PDF - All Students (PRO)", create_principal_pdf(rows_for_pdf, level_pdf, avg, "My School"), file_name="Portfolio_Principal.pdf", use_container_width=True, key="portfolio_pdf_1944")
+                st.download_button("📄 Principal PDF - All Students (PRO)", create_principal_pdf(rows_for_pdf, level_pdf, avg, "My School"), file_name="Portfolio_Principal.pdf", use_container_width=True, key="portfolio_pdf_1945")
             st.divider()
             st.markdown("#### 🗑️ Delete Duplicate")
             delete_options = {f"{r['student_name']} | {r['score']}/10 | {str(r['created_at'])[:16]} | {r['id'][:6]}": r['id'] for r in rows.data}
-            sel = st.selectbox("Select essay to delete:", list(delete_options.keys()), key="del_select_1944")
+            sel = st.selectbox("Select essay to delete:", list(delete_options.keys()), key="del_select_1945")
             c_del1, c_del2 = st.columns(2)
             with c_del1:
-                if st.button("🗑️ Delete Selected", use_container_width=True, key="del_btn_1944"):
+                if st.button("🗑️ Delete Selected", use_container_width=True, key="del_btn_1945"):
                     try: supabase.table("essays").delete().eq("id", delete_options[sel]).execute(); st.success("Deleted!"); st.rerun()
                     except Exception as e: st.error(f"Delete failed: {e}")
             with c_del2:
-                if st.button("⚠️ Clear ALL", use_container_width=True, key="clear_all_1944"):
+                if st.button("⚠️ Clear ALL", use_container_width=True, key="clear_all_1945"):
                     try: supabase.table("essays").delete().eq("teacher_id", st.session_state.teacher_id).execute(); st.success("All cleared"); st.rerun()
                     except Exception as e: st.error(str(e))
         else:
-            st.info("No essays yet. If you just graded, wait 3 sec and press R to refresh browser.")
+            st.info("No essays yet.")
     except Exception as e: st.error(f"History error: {e}")
-
 with tab1:
-    essay = st.text_area("Paste Essay:", height=150, placeholder="Paste student essay..."); s_name = st.text_input("Student Name:", value="Student", key="s_name_single_1944"); level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level_1944")
+    essay = st.text_area("Paste Essay:", height=150, placeholder="Paste student essay..."); s_name = st.text_input("Student Name:", value="Student", key="s_name_single_1945"); level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level_1945")
     if st.button("🚀 GRADE & SAVE TO PORTFOLIO ->", type="primary", use_container_width=True):
         if not is_pro() and st.session_state.uses>=3: st.error("Free limit reached."); st.stop()
         if not essay.strip(): st.warning("Paste essay first"); st.stop()
@@ -514,28 +459,26 @@ with tab1:
                 result_text = grade_with_groq(essay, level); score, cefr, _ = extract_score_cefr(result_text); ai_flag = detect_ai_risk(essay)
                 ok = save_essay_db(s_name, essay, level, score, cefr, result_text)
                 if not is_pro(): st.session_state.uses+=1
-                if ok: st.success(f"✅ Saved to Portfolio: {score}/10 {cefr} | {ai_flag} | Refresh Portfolio tab to see")
-                else: st.warning(f"Graded {score}/10 but save failed - retry")
+                if ok: st.success(f"✅ Saved to Portfolio: {score}/10 {cefr}")
                 st.markdown(f"**AI Check:** {ai_flag}"); st.markdown(result_text)
                 st.download_button("📄 Parent Report PDF", create_branded_pdf(essay, result_text, level, s_name), file_name=f"Report_{s_name}_{level}.pdf", use_container_width=True)
             except Exception as e: st.error(f"Grading error: {e}")
-
 with tab3:
     st.markdown("### 📸 Photo & PDF - Handwriting to Text")
     st.caption("Snap handwritten homework with phone → Auto-read → Grade → Save to Portfolio")
-    level_p=st.selectbox("Target Level:",["A1","A2","B1","B2","C1","C2"],key="photo_level_1944")
-    camera_pic=st.camera_input("Take photo"); upload_img=st.file_uploader("Upload Image",type=["jpg","jpeg","png"],key="img_up_1944"); upload_pdf=st.file_uploader("Upload PDF",type=["pdf"],key="pdf_up_1944")
+    level_p=st.selectbox("Target Level:",["A1","A2","B1","B2","C1","C2"],key="photo_level_1945")
+    camera_pic=st.camera_input("Take photo"); upload_img=st.file_uploader("Upload Image",type=["jpg","jpeg","png"],key="img_up_1945"); upload_pdf=st.file_uploader("Upload PDF",type=["pdf"],key="pdf_up_1945")
     image_bytes=None
     if camera_pic: image_bytes=camera_pic.getvalue()
     elif upload_img: image_bytes=upload_img.getvalue()
     if image_bytes: st.image(image_bytes,use_container_width=True)
     if upload_pdf:
-        extracted=extract_text_from_pdf(upload_pdf.getvalue()); st.text_area("Text from PDF:",value=extracted,height=120, key="pdf_text_1944")
+        extracted=extract_text_from_pdf(upload_pdf.getvalue()); st.text_area("Text from PDF:",value=extracted,height=120, key="pdf_text_1945")
         if st.button("GRADE PDF TEXT -> Save to Portfolio", type="primary", use_container_width=True):
             try:
                 result_text=grade_with_groq(extracted,level_p); score,cefr,_=extract_score_cefr(result_text); save_essay_db("PDF Student",extracted,level_p,score,cefr,result_text); st.markdown(result_text)
             except Exception as e: st.error(str(e))
-    if image_bytes and st.button("📸 READ, GRADE & SAVE -> Portfolio (1 Click)", type="primary", use_container_width=True, key="read_grade_save_1944"):
+    if image_bytes and st.button("📸 READ, GRADE & SAVE -> Portfolio (1 Click)", type="primary", use_container_width=True, key="read_grade_save_1945"):
         with st.spinner("Reading handwriting + Grading + Saving..."):
             extracted=extract_text_from_image(image_bytes); st.session_state.last_ocr=extracted
             try:
@@ -544,28 +487,17 @@ with tab3:
                 st.session_state.last_photo_result=result_text
                 if not is_pro(): st.session_state.uses+=1
                 if saved:
-                    st.success(f"✅ OCR + Graded + Saved to Portfolio: {score}/10 {cefr} | {ai_flag} | Go Portfolio + Refresh (R)")
-                else:
-                    st.warning(f"Graded {score}/10 but Portfolio save delayed")
-                st.text_area("OCR Text:", value=extracted, height=100, key="ocr_after_1944"); st.markdown(result_text)
-                st.download_button("📄 Parent Report PDF", create_branded_pdf(extracted, result_text, level_p, "Photo Student"), file_name=f"Photo_Report_{level_p}.pdf", use_container_width=True, key="photo_pdf_1944")
-            except Exception as e: st.error(f"Error: {e}"); st.text_area("OCR Text (fix & grade manually):", value=extracted, height=120, key="ocr_error_1944")
-
+                    st.success(f"✅ Saved: {score}/10 {cefr} | {ai_flag}")
+                st.text_area("OCR Text:", value=extracted, height=100, key="ocr_after_1945"); st.markdown(result_text)
+                st.download_button("📄 Parent Report PDF", create_branded_pdf(extracted, result_text, level_p, "Photo Student"), file_name=f"Photo_Report_{level_p}.pdf", use_container_width=True, key="photo_pdf_1945")
+            except Exception as e: st.error(f"Error: {e}")
 with tab2:
     st.markdown("### ⚡ Batch 50 PRO - Whole Class in One Click")
-    st.caption("Upload 50 essays → Auto-grade → Save to Portfolio → Principal Report")
-    sample_df = pd.DataFrame({
-        "student_name":["Thandi","John","Aisha"],
-        "essay":[
-            "My name is Thandi. I am 12 years old. I live with my family in Durban. My family is big and kind. I like school because I learn new things every day. My favorite subject is English.",
-            "My best friend is John. He is very kind and helpful. We play football after school every day. He helps me with my homework. We share lunch and stories. I am happy to have him as my friend.",
-            "Last weekend I went to the market with my mother. We bought vegetables and fruits. The market was very busy and colorful. I saw many people and I liked it. We will go again next week."
-        ]
-    })
-    b,_ = df_to_excel_bytes_safe(sample_df,"Essays"); st.download_button("📥 Download Template (50 students)", b, file_name="Template_50.xlsx", use_container_width=True, key="template_50_1944")
-    school_name = st.text_input("School Name:", value="My School", key="school_name_1944"); level_b = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], index=0, key="batch_level_1944")
-    uploaded = st.file_uploader("Upload Excel/CSV (max 50)", type=["csv","xlsx","txt"], key="batch_file_1944")
-    if st.button("🚀 GRADE BATCH 50 -> Save to Portfolio", type="primary", use_container_width=True, key="batch_btn_50_1944"):
+    sample_df = pd.DataFrame({"student_name":["Thandi","John","Aisha"],"essay":["My name is Thandi. I am 12 years old. I live with my family in Durban.","My best friend is John. He is very kind and helpful. We play football after school.","Last weekend I went to the market with my mother. We bought vegetables and fruits."]})
+    b,_ = df_to_excel_bytes_safe(sample_df,"Essays"); st.download_button("📥 Download Template (50 students)", b, file_name="Template_50.xlsx", use_container_width=True, key="template_50_1945")
+    school_name = st.text_input("School Name:", value="My School", key="school_name_1945"); level_b = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], index=0, key="batch_level_1945")
+    uploaded = st.file_uploader("Upload Excel/CSV (max 50)", type=["csv","xlsx","txt"], key="batch_file_1945")
+    if st.button("🚀 GRADE BATCH 50 -> Save to Portfolio", type="primary", use_container_width=True, key="batch_btn_50_1945"):
         if not is_pro(): st.error("Batch needs PRO"); st.stop()
         if not uploaded: st.warning("Upload first"); st.stop()
         essays=[]; names=[]
@@ -584,15 +516,14 @@ with tab2:
                 results.append({"Student":names[i],"Score":"Error","CEFR":"Error","AI_Flag":str(e)[:30]})
             progress.progress((i+1)/len(essays))
         st.session_state.batch_results={"results":results,"excel_rows":excel_rows,"level":level_b,"school":school_name}
-        st.success(f"Done {len(results)} - all saved to Portfolio (refresh Portfolio tab)")
+        st.success(f"Done {len(results)} - all saved to Portfolio")
     if st.session_state.batch_results:
         results=st.session_state.batch_results["results"]; excel_rows=st.session_state.batch_results["excel_rows"]; level_b=st.session_state.batch_results["level"]; school_name=st.session_state.batch_results["school"]
         avg_score=sum([r["Score /10"] for r in excel_rows if isinstance(r["Score /10"], int)])/len(excel_rows) if excel_rows else 0
         st.markdown(f"### Avg {avg_score:.1f}/10 - {len(results)} graded")
         st.dataframe(pd.DataFrame(results), use_container_width=True)
         if is_pro():
-            st.download_button("📄 Principal PDF (PRO)", create_principal_pdf(excel_rows, level_b, avg_score, school_name), file_name=f"Principal_{school_name}.pdf", use_container_width=True, key="principal_pdf_1944")
-
+            st.download_button("📄 Principal PDF (PRO)", create_principal_pdf(excel_rows, level_b, avg_score, school_name), file_name=f"Principal_{school_name}.pdf", use_container_width=True, key="principal_pdf_1945")
 with tab5:
     st.markdown("## 📘 Teacher Guide - How to Use TEFLMate")
     st.caption("Save 5 hours a week - 3 min setup")
@@ -610,20 +541,20 @@ with tab5:
         st.markdown("### 🌎 5. Languages & Standards")
         st.markdown("Sidebar: Choose feedback language (EN, ES, PT, FR, AR, HI, ZH) + Standard (CEFR, IELTS, TOEFL, US Grade)")
         st.markdown("### 💡 Pro Tips")
-        st.warning("Essays need 30+ words for accurate score. Short = 5/10 fixed (deterministic).\n\nPhoto best in daylight, flat on desk.\n\nBatch 50 and Excel export need PRO plan.")
-
+        st.warning("Essays need 30+ words for accurate score.\n\nPhoto best in daylight, flat on desk.\n\nBatch 50 and Excel export need PRO plan.")
+    st.divider()
+    st.markdown("**Workflow:** Photo in class → Batch 50 homework → Portfolio shows progress → Principal PDF for HOD → Parent PDF in home language")
 with tab6:
     st.markdown("## 🚀 SUPER 7Lang - One Click Market Setup")
     st.caption("Set your whole app for your country in 1 click")
     c1,c2,c3=st.columns(3)
     with c1:
-        if st.button("🇧🇷 Brazil - Portuguese + CEFR", use_container_width=True, key="set_br_1944"): st.session_state.feedback_lang="Portuguese"; st.session_state.grading_standard="CEFR"; st.success("✅ Portuguese + CEFR - Brazil ready"); st.balloons()
-        if st.button("🇲🇽 Mexico/Spain - Spanish + CEFR", use_container_width=True, key="set_es_1944"): st.session_state.feedback_lang="Spanish"; st.session_state.grading_standard="CEFR"; st.success("✅ Spanish + CEFR ready")
+        if st.button("🇧🇷 Brazil - Portuguese + CEFR", use_container_width=True, key="set_br_1945"): st.session_state.feedback_lang="Portuguese"; st.session_state.grading_standard="CEFR"; st.success("✅ Portuguese + CEFR - Brazil ready"); st.balloons()
+        if st.button("🇲🇽 Mexico/Spain - Spanish + CEFR", use_container_width=True, key="set_es_1945"): st.session_state.feedback_lang="Spanish"; st.session_state.grading_standard="CEFR"; st.success("✅ Spanish + CEFR ready")
     with c2:
-        if st.button("🇸🇦 MENA - Arabic + IELTS", use_container_width=True, key="set_ar_1944"): st.session_state.feedback_lang="Arabic"; st.session_state.grading_standard="IELTS"; st.success("✅ Arabic + IELTS - MENA ready"); st.balloons()
-        if st.button("🇺🇸 USA/UK - English + TOEFL", use_container_width=True, key="set_us_1944"): st.session_state.feedback_lang="English"; st.session_state.grading_standard="TOEFL"; st.success("✅ English + TOEFL ready")
+        if st.button("🇸🇦 MENA - Arabic + IELTS", use_container_width=True, key="set_ar_1945"): st.session_state.feedback_lang="Arabic"; st.session_state.grading_standard="IELTS"; st.success("✅ Arabic + IELTS - MENA ready"); st.balloons()
+        if st.button("🇺🇸 USA/UK - English + TOEFL", use_container_width=True, key="set_us_1945"): st.session_state.feedback_lang="English"; st.session_state.grading_standard="TOEFL"; st.success("✅ English + TOEFL ready")
     with c3:
-        if st.button("🇮🇳 India - Hindi + IELTS", use_container_width=True, key="set_in_1944"): st.session_state.feedback_lang="Hindi"; st.session_state.grading_standard="IELTS"; st.success("✅ Hindi + IELTS - India ready"); st.balloons()
-        if st.button("🇿🇦 SA - English + CEFR", use_container_width=True, key="set_sa_1944"): st.session_state.feedback_lang="English"; st.session_state.grading_standard="CEFR"; st.success("✅ English + CEFR - SA ready")
-
-st.caption("TEFLMate - Class Portfolio • V1944 Full Restore + Deterministic • Reset Link Fixed")
+        if st.button("🇮🇳 India - Hindi + IELTS", use_container_width=True, key="set_in_1945"): st.session_state.feedback_lang="Hindi"; st.session_state.grading_standard="IELTS"; st.success("✅ Hindi + IELTS - India ready"); st.balloons()
+        if st.button("🇿🇦 SA - English + CEFR", use_container_width=True, key="set_sa_1945"): st.session_state.feedback_lang="English"; st.session_state.grading_standard="CEFR"; st.success("✅ English + CEFR - SA ready")
+st.caption("TEFLMate - Class Portfolio • V1945 Clean")
