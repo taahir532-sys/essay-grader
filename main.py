@@ -27,9 +27,9 @@ supabase = create_client(SUPABASE_URL, SUPABASE_ANON)
 
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
-st.set_page_config(page_title="TEFLMate v6.5.3 SUPER 7Lang", page_icon="📝", layout="wide")
+st.set_page_config(page_title="TEFLMate v6.5.4 SUPER 7Lang", page_icon="📝", layout="wide")
 
-# === v6.5.3 DESKTOP + MOBILE CSS ===
+# === v6.5.4 DESKTOP + MOBILE CSS ===
 st.markdown("""<style>
 .stButton>button {background:#111;color:white;border-radius:10px;height:48px;font-weight:bold;width:100%;border:1px solid #111;}
 .stButton>button:hover {background:#222;color:white;border:1px solid #222;}
@@ -75,11 +75,11 @@ if st.session_state.user is None:
         pass
 
 def login_screen():
-    st.title("📝 TEFLMate v6.5.3 - Login")
+    st.title("📝 TEFLMate v6.5.4 - Login")
     st.caption("SUPER 7Lang • Desktop + Mobile • Password Reset + Change Password")
     t1, t2 = st.tabs(["🔑 Login", "✨ Sign Up"])
     with t1:
-        with st.form("login_form_v653"):
+        with st.form("login_form_v654"):
             email = st.text_input("Email")
             password = st.text_input("Password", type="password")
             colA, colB = st.columns([2,1])
@@ -103,13 +103,13 @@ def login_screen():
             fp_email = st.text_input("Enter your email to reset:", key="fp_email")
             if st.button("📧 Send Reset Link", use_container_width=True):
                 try:
-                    supabase.auth.reset_password_for_email(fp_email, {"redirect_to": "https://teflmate.streamlit.app"})
+                    supabase.auth.reset_password_for_email(fp_email, {"redirect_to": "https://essay-grader-3atbxqeqdfpdh9huwezx57.streamlit.app/"})
                     st.success(f"Reset link sent to {fp_email}! Check inbox + spam folder.")
                 except Exception as e:
                     st.error(f"Reset failed: {e}")
-                    st.info("Fix in Supabase: Authentication > URL Configuration > Add https://teflmate.streamlit.app to Redirect URLs")
+                    st.info("Fix in Supabase: Authentication > URL Configuration > Add https://essay-grader-3atbxqeqdfpdh9huwezx57.streamlit.app/ to Redirect URLs")
     with t2:
-        with st.form("signup_form_v653"):
+        with st.form("signup_form_v654"):
             email2 = st.text_input("New Email", key="s_email")
             password2 = st.text_input("New Password", type="password", key="s_pass")
             school = st.text_input("School Name", value="My School")
@@ -263,11 +263,11 @@ def save_essay_db(student_name, essay_text, level, score, cefr, feedback):
     try: supabase.table("essays").insert({"teacher_id": st.session_state.teacher_id, "student_name": student_name, "essay_text": essay_text, "level": level, "score": score, "cefr": cefr, "feedback": feedback}).execute()
     except Exception as e: st.warning(f"DB error: {e}")
 
-# === HEADER v6.5.3 ===
+# === HEADER v6.5.4 ===
 col_title, col_user = st.columns([3,1])
 with col_title:
-    st.title("📝 TEFLMate v6.5.3 SUPER")
-    st.caption("Desktop + Mobile • 7 Languages • Rubric + IELTS/TOEFL + AI Flag + Graph • Change Password NEED")
+    st.title("📝 TEFLMate v6.5.4 SUPER")
+    st.caption("Desktop + Mobile • 7 Languages • Rubric + IELTS/TOEFL + AI Flag + Graph • Fixed Reset URL")
 with col_user:
     st.info(f"👤 {st.session_state.user.email[:24]} | {get_status()}")
     if st.button("Logout", use_container_width=True):
@@ -276,7 +276,7 @@ with col_user:
 
 with st.sidebar:
     st.markdown("### 🔑 Your Plan"); st.info(get_status())
-    # --- CHANGE PASSWORD INSIDE APP - NEW v6.5.3 ---
+    # --- CHANGE PASSWORD INSIDE APP - NEW v6.5.4 ---
     with st.expander("🔐 Change Password (Inside App) - NEW"):
         st.caption(f"Logged as: {st.session_state.user.email}")
         new_pass = st.text_input("New Password", type="password", key="new_pass_inside")
@@ -444,4 +444,4 @@ with tab6:
     st.divider()
     st.info(f"Current: {st.session_state.feedback_lang} + {st.session_state.grading_standard} ✅")
 
-st.caption("TEFLMate v6.5.3 SUPER 7Lang • Desktop+Mobile • Password Reset + Remember Me + Change Password Inside App + 7 Languages + Rubric + IELTS/TOEFL + AI Flag + Graph")
+st.caption("TEFLMate v6.5.4 SUPER 7Lang • Desktop+Mobile • Password Reset Fixed to essay-grader-3atbxqeqdfpdh9huwezx57.streamlit.app + Change Password Inside App")
