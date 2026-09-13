@@ -66,6 +66,7 @@ if "teacher_id" not in st.session_state: st.session_state.teacher_id = None
 if "custom_rubric" not in st.session_state: st.session_state.custom_rubric = None
 if "feedback_lang" not in st.session_state: st.session_state.feedback_lang = "English"
 if "grading_standard" not in st.session_state: st.session_state.grading_standard = "CEFR"
+if "last_reset" not in st.session_state: st.session_state.last_reset = None
 if "geo" not in st.session_state:
     try:
         ip_data = requests.get("https://ipapi.co/json/", timeout=3).json()
@@ -77,7 +78,7 @@ if "geo" not in st.session_state:
     elif country in ["DE","FR","NL","IT","ES","PT","IE"]: st.session_state.geo = {"symbol":"€", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"EUR"}
     else: st.session_state.geo = {"symbol":"$", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"USD"}
 
-# === v6.5.6 RECOVERY MODE - FIXED - ONLY CHANGE ===
+# === v6.5.6 RECOVERY MODE - FIXED ===
 q_rec = st.query_params
 if "access_token" in q_rec:
     st.title("🔐 TEFLMate - Set New Password")
@@ -142,12 +143,24 @@ def login_screen():
                     except Exception as e: st.error(f"Login failed: {e}")
         with st.expander("🔓 Forgot Password? - Reset via Email"):
             fp_email = st.text_input("Enter your email to reset:", key="fp_email")
+            # Rate limit guard
+            if st.session_state.last_reset:
+                diff = datetime.now() - st.session_state.last_reset
+                if diff.total_seconds() < 3600:
+                    mins = int(60 - diff.total_seconds()//60)
+                    st.warning(f"Reset already sent. Wait {mins} mins before retrying to avoid lockout.")
+                    st.stop()
             if st.button("📧 Send Reset Link", use_container_width=True):
                 try:
                     supabase.auth.reset_password_for_email(fp_email, {"redirect_to": "https://essay-grader-3atbxqeqdfpdh9huwezx57.streamlit.app/"})
-                    st.success(f"Reset link sent to {fp_email}! Check inbox + spam folder.")
+                    st.session_state.last_reset = datetime.now()
+                    st.success(f"Reset link sent to {fp_email}! Check inbox + spam. Wait 5 mins before clicking.")
                 except Exception as e:
-                    st.error(f"Reset failed: {e}")
+                    if "rate limit" in str(e).lower():
+                        st.error("Rate limit hit — Supabase locked for 60 mins. Use sidebar Change Password inside app for now.")
+                        st.session_state.last_reset = datetime.now()
+                    else:
+                        st.error(f"Reset failed: {e}")
     with t2:
         with st.form("signup_form_v656"):
             email2 = st.text_input("New Email", key="s_email")
