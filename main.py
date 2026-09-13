@@ -99,8 +99,8 @@ if has_token:
         pass
     st.title("🔐 TEFLMate - Set New Password")
     st.info("Reset link detected - set your new password below")
-    new_p = st.text_input("New Password (6+ chars)", type="password", key="rec_new_final_1100")
-    conf_p = st.text_input("Confirm", type="password", key="rec_conf_final_1100")
+    new_p = st.text_input("New Password (6+ chars)", type="password", key="rec_new_final_1300")
+    conf_p = st.text_input("Confirm", type="password", key="rec_conf_final_1300")
     if st.button("✅ UPDATE PASSWORD & LOGIN", type="primary", use_container_width=True):
         if len(new_p) < 6: st.warning("6+ chars")
         elif new_p!= conf_p: st.error("No match")
@@ -120,12 +120,18 @@ if st.session_state.user is None:
             td = supabase.table("teachers").select("*").eq("email", sess.user.email).execute()
             if td.data:
                 st.session_state.teacher_id = td.data[0]["id"]
+                # RESTORE PRO + BONUS ON RELOGIN
                 if td.data[0].get("pro_expiry"):
                     try:
                         exp = datetime.fromisoformat(td.data[0]["pro_expiry"].replace("Z",""))
                         if exp > datetime.now():
                             st.session_state.pro_expiry = exp
                             st.session_state.active_plan = td.data[0].get("active_plan")
+                    except: pass
+                if td.data[0].get("bonus_grades"):
+                    try:
+                        # bonus_grades = negative uses = extra grades
+                        st.session_state.uses = -int(td.data[0].get("bonus_grades",0))
                     except: pass
     except: pass
 
@@ -134,19 +140,28 @@ def login_screen():
     st.caption("Photo-grade handwritten homework • Track progress • Parent reports in 7 languages")
     t1, t2 = st.tabs(["🔑 Login", "✨ Sign Up"])
     with t1:
-        with st.form("login_form_final_1100"):
+        with st.form("login_form_final_1300"):
             email = st.text_input("Email"); password = st.text_input("Password", type="password")
             if st.form_submit_button("🚀 Login", use_container_width=True, type="primary"):
                 try:
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                     st.session_state.user = res.user
                     td = supabase.table("teachers").select("*").eq("email", email).execute()
-                    if td.data: st.session_state.teacher_id = td.data[0]["id"]
-                    else: ins = supabase.table("teachers").insert({"email": email}).execute(); st.session_state.teacher_id = ins.data[0]["id"]
+                    if td.data:
+                        st.session_state.teacher_id = td.data[0]["id"]
+                        if td.data[0].get("pro_expiry"):
+                            try:
+                                exp = datetime.fromisoformat(td.data[0]["pro_expiry"].replace("Z",""))
+                                if exp > datetime.now():
+                                    st.session_state.pro_expiry = exp
+                                    st.session_state.active_plan = td.data[0].get("active_plan")
+                            except: pass
+                    else:
+                        ins = supabase.table("teachers").insert({"email": email}).execute(); st.session_state.teacher_id = ins.data[0]["id"]
                     st.rerun()
                 except Exception as e: st.error(f"Login failed: {e}")
         with st.expander("🔓 Forgot Password?"):
-            fp_email = st.text_input("Email to reset:", key="fp_email_1100")
+            fp_email = st.text_input("Email to reset:", key="fp_email_1300")
             if st.session_state.last_reset and (datetime.now()-st.session_state.last_reset).total_seconds()<3600:
                 st.warning(f"Wait {int(60-(datetime.now()-st.session_state.last_reset).total_seconds()//60)} mins - Supabase rate limit")
             else:
@@ -156,8 +171,8 @@ def login_screen():
                         st.session_state.last_reset = datetime.now(); st.success(f"Sent to {fp_email} - Check spam too")
                     except Exception as e: st.error(str(e))
     with t2:
-        with st.form("signup_form_final_1100"):
-            email2 = st.text_input("New Email", key="s_email_1100"); password2 = st.text_input("New Password", type="password", key="s_pass_1100"); school = st.text_input("School Name", value="My School")
+        with st.form("signup_form_final_1300"):
+            email2 = st.text_input("New Email", key="s_email_1300"); password2 = st.text_input("New Password", type="password", key="s_pass_1300"); school = st.text_input("School Name", value="My School")
             if st.form_submit_button("Create Account", use_container_width=True):
                 try:
                     supabase.auth.sign_up({"email": email2, "password": password2})
@@ -176,7 +191,7 @@ def get_status():
     else:
         remaining = 3 - st.session_state.uses
         if remaining <=0: return "❌ FREE - 0 left"
-        if st.session_state.active_plan == "ONCE10" and remaining >3: return f"✅ R10 - {remaining} left"
+        if st.session_state.active_plan and "ONCE" in str(st.session_state.active_plan) and remaining >3: return f"✅ {st.session_state.active_plan} - {remaining} left"
         return f"FREE - {remaining} left"
 
 def clean(text): return unicodedata.normalize('NFKD', text or "").encode('ascii', 'ignore').decode('ascii')
@@ -207,6 +222,40 @@ def df_to_excel_bytes_safe(df, sheet_name="Sheet1"):
         return output.getvalue(), "xlsx"
     except: return df.to_csv(index=False).encode('utf-8'), "csv"
 
+# PERSISTENCE FIX
+def save_pro_to_db(pro_expiry, active_plan, bonus_delta=0):
+    try:
+        email = st.session_state.user.email if st.session_state.user else YOUR_EMAIL
+        data = {}
+        if pro_expiry:
+            data["pro_expiry"] = pro_expiry.isoformat()
+        if active_plan:
+            data["active_plan"] = active_plan
+        if bonus_delta!=0:
+            # save total bonus grades earned
+            try:
+                td = supabase.table("teachers").select("bonus_grades").eq("email", email).execute()
+                current = td.data[0].get("bonus_grades",0) if td.data and td.data[0].get("bonus_grades") else 0
+                data["bonus_grades"] = current + bonus_delta
+            except:
+                data["bonus_grades"] = bonus_delta
+        if not data:
+            return True
+        # Try by teacher_id first, then by email fallback
+        try:
+            if st.session_state.teacher_id:
+                supabase.table("teachers").update(data).eq("id", st.session_state.teacher_id).execute()
+            else:
+                supabase.table("teachers").update(data).eq("email", email).execute()
+        except Exception as e1:
+            # fallback email
+            supabase.table("teachers").update(data).eq("email", email).execute()
+        return True
+    except Exception as e:
+        st.warning(f"DB save failed (check Supabase RLS): {e}")
+        st.info("Fix: Supabase → teachers table → Disable RLS or add policy: FOR ALL USING true")
+        return False
+
 def init_paystack(email, amount_kobo, plan_code):
     try:
         secret = st.secrets["PAYSTACK_SECRET_KEY"]; headers = {"Authorization": f"Bearer {secret}", "Content-Type": "application/json"}
@@ -223,15 +272,13 @@ def unlock_paystack(v):
     if d.get("status")!= "success": return False
     amt = d.get("amount", 0); plan = d.get("metadata", {}).get("plan", ""); now = datetime.now()
     pro_exp = None; active = None
-    if amt == 1000 or plan == "ONCE10": st.session_state.uses -= 10; active="ONCE10"; st.success("R10 received! +10 grades"); st.balloons()
-    elif amt == 4900 or plan == "WEEK49": pro_exp = now + timedelta(days=7); active="WEEK49"; st.success("R49 Weekly PRO"); st.balloons()
-    elif amt == 9900 or plan == "MONTH99": pro_exp = now + timedelta(days=30); active="MONTH99"; st.success("R99 Monthly PRO"); st.balloons()
-    elif amt == 79900 or plan == "YEAR799": pro_exp = now + timedelta(days=365); active="YEAR799"; st.success("R799 Yearly PRO"); st.balloons()
+    if amt == 1000 or plan == "ONCE10": st.session_state.uses -= 10; active="ONCE10"; save_pro_to_db(None, active, 10); st.success("R10 received! +10 grades saved to DB"); st.balloons()
+    elif amt == 4900 or plan == "WEEK49": pro_exp = now + timedelta(days=7); active="WEEK49"; save_pro_to_db(pro_exp, active, 0); st.success("R49 Weekly PRO saved"); st.balloons()
+    elif amt == 9900 or plan == "MONTH99": pro_exp = now + timedelta(days=30); active="MONTH99"; save_pro_to_db(pro_exp, active, 0); st.success("R99 Monthly PRO saved"); st.balloons()
+    elif amt == 79900 or plan == "YEAR799": pro_exp = now + timedelta(days=365); active="YEAR799"; save_pro_to_db(pro_exp, active, 0); st.success("R799 Yearly PRO saved"); st.balloons()
     else: return False
     if active!= "ONCE10" and pro_exp:
         st.session_state.pro_expiry = pro_exp; st.session_state.active_plan = active
-        try: supabase.table("teachers").update({"pro_expiry": pro_exp.isoformat(), "active_plan": active}).eq("id", st.session_state.teacher_id).execute()
-        except: pass
     else:
         st.session_state.active_plan = active
     return True
@@ -271,7 +318,9 @@ def create_branded_pdf(original_essay, ai_result, target_level, student_name="St
     pdf.set_fill_color(17, 24, 39); pdf.rect(0, 0, 210, 32, 'F'); pdf.set_y(7)
     pdf.set_font("Arial", 'B', 14); pdf.set_text_color(255,255,255); pdf.cell(0, 8, "TEFLMate | Class Portfolio Report", align='C', ln=True); pdf.ln(10)
     pdf.set_text_color(0,0,0); pdf.set_font("Arial", 'B', 11); pdf.cell(0, 7, f"Student: {student_name} | Level: {target_level} | Date: {datetime.now().strftime('%d %b %Y')}", ln=True); pdf.ln(2)
-    pdf.set_font("Arial", '', 10); pdf.multi_cell(0, 6, clean(ai_result)); return pdf.output(dest='S').encode('latin-1')
+    pdf.set_font("Arial", '', 10); pdf.multi_cell(0, 6, clean(ai_result))
+    out = pdf.output(dest='S')
+    return out.encode('latin-1') if isinstance(out, str) else bytes(out)
 
 def create_principal_pdf(excel_rows, level, avg_score, school_name="School"):
     pdf = FPDF(); pdf.set_auto_page_break(auto=True, margin=15); pdf.add_page()
@@ -286,7 +335,8 @@ def create_principal_pdf(excel_rows, level, avg_score, school_name="School"):
     for r in excel_rows:
         score = r['Score /10']; status = "Excellent" if score >= 8 else "Good" if score >= 6 else "Needs Support"
         pdf.cell(70, 7, clean(r['Student Name'])[:35], border=1); pdf.cell(25, 7, f"{score}/10", border=1, align='C'); pdf.cell(25, 7, r['CEFR'], border=1, align='C'); pdf.cell(70, 7, status, border=1); pdf.ln()
-    return pdf.output(dest='S').encode('latin-1')
+    out = pdf.output(dest='S')
+    return out.encode('latin-1') if isinstance(out, str) else bytes(out)
 
 def detect_ai_risk(essay_text):
     text = essay_text.lower()
@@ -322,17 +372,16 @@ with col_user:
     if st.session_state.user and st.button("Logout", use_container_width=True):
         supabase.auth.sign_out(); st.session_state.user=None; st.session_state.teacher_id=None; st.rerun()
 
-# BALLOONS FIX - Show after redeem
 if st.session_state.promo_success:
     st.balloons()
-    st.success("🎉 Code applied - Welcome to PRO!")
+    st.success("🎉 Code applied - saved! Now stays after relogin.")
     st.session_state.promo_success = False
 
 with st.sidebar:
     st.markdown("### 🔑 Your Plan"); st.info(get_status())
     with st.expander("🔐 Change Password"):
-        new_pass = st.text_input("New Password", type="password", key="new_pass_1100")
-        confirm_pass = st.text_input("Confirm New Password", type="password", key="confirm_pass_1100")
+        new_pass = st.text_input("New Password", type="password", key="new_pass_1300")
+        confirm_pass = st.text_input("Confirm New Password", type="password", key="confirm_pass_1300")
         if st.button("Update Password", use_container_width=True, type="primary"):
             if not new_pass or len(new_pass) < 6: st.warning("6+ chars")
             elif new_pass!= confirm_pass: st.error("No match")
@@ -344,8 +393,8 @@ with st.sidebar:
     st.markdown(f"#### 💰 Plans ({g['code']}) - Keep Portfolio")
 
     with st.expander("🎟️ Enter Code / Promo"):
-        promo = st.text_input("Promo Code:", value="", placeholder="Enter code", key="promo_code_empty_1100")
-        if st.button("✅ Redeem Code", use_container_width=True, key="redeem_btn_1100"):
+        promo = st.text_input("Promo Code:", value="", placeholder="Enter code", key="promo_code_empty_1300")
+        if st.button("✅ Redeem Code", use_container_width=True, key="redeem_btn_1300"):
             code = promo.strip().upper()
             code_map = {
                 "TEFL2024": 30, "KEEP99": 30, "TEACHFREE": 30, "BRAZIL50": 30, "INDIA50": 30,
@@ -359,20 +408,20 @@ with st.sidebar:
                 if days == 0:
                     st.session_state.uses -= 10
                     st.session_state.active_plan = code
+                    save_pro_to_db(None, code, 10)
                     st.session_state.promo_success = True
                     st.rerun()
                 else:
-                    st.session_state.pro_expiry = datetime.now() + timedelta(days=days)
+                    new_expiry = datetime.now() + timedelta(days=days)
+                    st.session_state.pro_expiry = new_expiry
                     st.session_state.active_plan = f"PROMO-{code}"
-                    try:
-                        supabase.table("teachers").update({"pro_expiry": st.session_state.pro_expiry.isoformat(), "active_plan": f"PROMO-{code}"}).eq("id", st.session_state.teacher_id).execute()
-                    except: pass
+                    save_pro_to_db(new_expiry, f"PROMO-{code}", 0)
                     st.session_state.promo_success = True
                     st.rerun()
             elif code!= "":
                 st.error(f"Invalid code: {code}")
 
-    email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email_1100")
+    email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email_1300")
     if not st.session_state.pay_links and email:
         with st.spinner("Loading..."):
             for plan, amt in [("ONCE10",1000),("WEEK49",4900),("MONTH99",9900),("YEAR799",79900)]:
@@ -394,7 +443,6 @@ tab4, tab1, tab3, tab2, tab5, tab6 = st.tabs(["📚 Portfolio","✍️ Grade Ess
 
 with tab4:
     st.markdown("### 📚 Your Class Portfolio")
-    # REMOVED RETENTION HOOK TEXT - CLEAN FOR TEACHERS
     try:
         rows=supabase.table("essays").select("*").eq("teacher_id",st.session_state.teacher_id).order("created_at",desc=True).limit(200).execute()
         if rows.data:
@@ -430,13 +478,13 @@ with tab1:
 with tab3:
     st.markdown("### 📸 Photo/PDF - Grade 40 handwritten books with phone. Brazil/India NEED this.")
     level_p=st.selectbox("Target Level:",["A1","A2","B1","B2","C1","C2"],key="photo_level")
-    camera_pic=st.camera_input("Take photo"); upload_img=st.file_uploader("Upload Image",type=["jpg","jpeg","png"],key="img_up_1100"); upload_pdf=st.file_uploader("Upload PDF",type=["pdf"],key="pdf_up_1100")
+    camera_pic=st.camera_input("Take photo"); upload_img=st.file_uploader("Upload Image",type=["jpg","jpeg","png"],key="img_up_1300"); upload_pdf=st.file_uploader("Upload PDF",type=["pdf"],key="pdf_up_1300")
     image_bytes=None
     if camera_pic: image_bytes=camera_pic.getvalue()
     elif upload_img: image_bytes=upload_img.getvalue()
     if image_bytes: st.image(image_bytes,use_container_width=True)
     if upload_pdf:
-        extracted=extract_text_from_pdf(upload_pdf.getvalue()); st.text_area("Text from PDF:",value=extracted,height=120, key="pdf_text_1100")
+        extracted=extract_text_from_pdf(upload_pdf.getvalue()); st.text_area("Text from PDF:",value=extracted,height=120, key="pdf_text_1300")
         if st.button("GRADE PDF TEXT -> Save to Portfolio", type="primary", use_container_width=True):
             try:
                 result_text=grade_with_groq(extracted,level_p); score,cefr,_=extract_score_cefr(result_text); save_essay_db("PDF Student",extracted,level_p,score,cefr,result_text); st.markdown(result_text)
@@ -454,8 +502,8 @@ with tab2:
     st.markdown("### ⚡ Batch 15 PRO - Safe batch, saves after each essay (no crash)")
     sample_df = pd.DataFrame({"student_name":["Thandi","John","Aisha"],"essay":["I go to market yesterday.","My best friend is Thandi.","I broken my leg last week."]})
     b,_ = df_to_excel_bytes_safe(sample_df,"Essays"); st.download_button("📥 Download Template", b, file_name="Template.xlsx", use_container_width=True)
-    school_name = st.text_input("School Name:", value="My School", key="school_name_1100"); level_b = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="batch_level_1100")
-    uploaded = st.file_uploader("Upload Excel/CSV (max 15)", type=["csv","xlsx","txt"], key="batch_file_1100")
+    school_name = st.text_input("School Name:", value="My School", key="school_name_1300"); level_b = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="batch_level_1300")
+    uploaded = st.file_uploader("Upload Excel/CSV (max 15)", type=["csv","xlsx","txt"], key="batch_file_1300")
     if st.button("🚀 GRADE BATCH 15 -> Save to Portfolio", type="primary", use_container_width=True):
         if not is_pro(): st.error("Batch needs PRO - Upgrade to keep portfolio"); st.stop()
         if not uploaded: st.warning("Upload first"); st.stop()
@@ -494,10 +542,10 @@ with tab6:
     st.markdown("## 🚀 SUPER 7Lang - One click set market")
     c1,c2,c3=st.columns(3)
     with c1:
-        if st.button("🇧🇷 Set Brazil", use_container_width=True, key="set_br_1100"): st.session_state.feedback_lang="Portuguese"; st.session_state.grading_standard="CEFR"; st.success("PT+CEFR - Brazil ready"); st.balloons()
+        if st.button("🇧🇷 Set Brazil", use_container_width=True, key="set_br_1300"): st.session_state.feedback_lang="Portuguese"; st.session_state.grading_standard="CEFR"; st.success("PT+CEFR - Brazil ready"); st.balloons()
     with c2:
-        if st.button("🇸🇦 Set Arabic", use_container_width=True, key="set_ar_1100"): st.session_state.feedback_lang="Arabic"; st.session_state.grading_standard="IELTS"; st.success("AR+IELTS - MENA ready")
+        if st.button("🇸🇦 Set Arabic", use_container_width=True, key="set_ar_1300"): st.session_state.feedback_lang="Arabic"; st.session_state.grading_standard="IELTS"; st.success("AR+IELTS - MENA ready")
     with c3:
-        if st.button("🇮🇳 Set Hindi", use_container_width=True, key="set_in_1100"): st.session_state.feedback_lang="Hindi"; st.session_state.grading_standard="IELTS"; st.success("HI+IELTS - India ready")
+        if st.button("🇮🇳 Set Hindi", use_container_width=True, key="set_in_1300"): st.session_state.feedback_lang="Hindi"; st.session_state.grading_standard="IELTS"; st.success("HI+IELTS - India ready")
 
 st.caption("TEFLMate - Class Portfolio • Essays saved forever • Export anytime")
