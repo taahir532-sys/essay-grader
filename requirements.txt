@@ -8,3 +8,4 @@ requests
 openpyxl
 matplotlib
 supabase>=2.12.0
+gdown
