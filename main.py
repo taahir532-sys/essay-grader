@@ -1,4 +1,18 @@
 import streamlit as st
+import streamlit.components.v1 as components
+
+# === CRITICAL HASH FIX FOR PASSWORD RESET - DO NOT REMOVE ===
+components.html("""
+<script>
+const hash = window.parent.location.hash;
+if (hash && hash.includes('access_token')) {
+    const queryString = hash.substring(1);
+    const newUrl = window.parent.location.origin + window.parent.location.pathname + '?' + queryString;
+    window.parent.location.href = newUrl;
+}
+</script>
+""", height=0)
+
 # --- UPTIME ROBOT KEEP-ALIVE - DO NOT REMOVE ---
 if "ping" in st.query_params or "uptime" in st.query_params or "health" in st.query_params:
     st.write("OK - TEFLMate Awake")
@@ -27,7 +41,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_ANON)
 
 YOUR_EMAIL = "taahir532@gmail.com"
 PAYPAL_ME = "https://paypal.me/TaahirMahomed"
-st.set_page_config(page_title="TEFLMate v6.5.5 Recovery Fix", page_icon="📝", layout="wide")
+st.set_page_config(page_title="TEFLMate v6.5.6 Hash Fix", page_icon="📝", layout="wide")
 
 st.markdown("""<style>
 .stButton>button {background:#111;color:white;border-radius:10px;height:48px;font-weight:bold;width:100%;border:1px solid #111;}
@@ -62,11 +76,11 @@ if "geo" not in st.session_state:
     elif country in ["DE","FR","NL","IT","ES","PT","IE"]: st.session_state.geo = {"symbol":"€", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"EUR"}
     else: st.session_state.geo = {"symbol":"$", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"USD"}
 
-# === v6.5.5 RECOVERY MODE - MUST BE BEFORE AUTO RESTORE ===
+# === v6.5.6 RECOVERY MODE - AFTER HASH CONVERSION ===
 q_rec = st.query_params
 if "access_token" in q_rec:
     st.title("🔐 TEFLMate - Set New Password")
-    st.info("✅ Reset link verified! Now set your new password below.")
+    st.success("✅ Reset link verified! Now set your new password below.")
     try:
         access_token = q_rec.get("access_token", "")
         refresh_token = q_rec.get("refresh_token", "")
@@ -75,8 +89,8 @@ if "access_token" in q_rec:
     except Exception as e:
         st.warning(f"Session setup: {e}")
 
-    new_p = st.text_input("New Password (6+ characters)", type="password", key="rec_new_655")
-    conf_p = st.text_input("Confirm New Password", type="password", key="rec_conf_655")
+    new_p = st.text_input("New Password (6+ characters)", type="password", key="rec_new_656")
+    conf_p = st.text_input("Confirm New Password", type="password", key="rec_conf_656")
     if st.button("✅ UPDATE PASSWORD & LOGIN", type="primary", use_container_width=True):
         if len(new_p) < 6:
             st.warning("Password must be 6+ characters")
@@ -85,10 +99,9 @@ if "access_token" in q_rec:
         else:
             try:
                 supabase.auth.update_user({"password": new_p})
-                st.success("✅ Password updated! Clearing link and logging you in...")
+                st.success("✅ Password updated! Clearing link...")
                 st.balloons()
                 st.query_params.clear()
-                # Try to auto-login
                 sess = supabase.auth.get_session()
                 if sess and sess.user:
                     st.session_state.user = sess.user
@@ -96,7 +109,7 @@ if "access_token" in q_rec:
                     if td.data: st.session_state.teacher_id = td.data[0]["id"]
                     st.rerun()
                 else:
-                    st.info("Now go login with new password")
+                    st.info("Now login with new password")
                     st.query_params.clear()
                     st.stop()
             except Exception as e:
@@ -115,11 +128,11 @@ if st.session_state.user is None:
         pass
 
 def login_screen():
-    st.title("📝 TEFLMate v6.5.5 - Login")
-    st.caption("SUPER 7Lang • Recovery Fix + Desktop + Mobile")
+    st.title("📝 TEFLMate v6.5.6 - Login")
+    st.caption("Hash Fix • Password Reset + Desktop + Mobile")
     t1, t2 = st.tabs(["🔑 Login", "✨ Sign Up"])
     with t1:
-        with st.form("login_form_v655"):
+        with st.form("login_form_v656"):
             email = st.text_input("Email")
             password = st.text_input("Password", type="password")
             colA, colB = st.columns([2,1])
@@ -148,7 +161,7 @@ def login_screen():
                 except Exception as e:
                     st.error(f"Reset failed: {e}")
     with t2:
-        with st.form("signup_form_v655"):
+        with st.form("signup_form_v656"):
             email2 = st.text_input("New Email", key="s_email")
             password2 = st.text_input("New Password", type="password", key="s_pass")
             school = st.text_input("School Name", value="My School")
@@ -302,10 +315,11 @@ def save_essay_db(student_name, essay_text, level, score, cefr, feedback):
     try: supabase.table("essays").insert({"teacher_id": st.session_state.teacher_id, "student_name": student_name, "essay_text": essay_text, "level": level, "score": score, "cefr": cefr, "feedback": feedback}).execute()
     except Exception as e: st.warning(f"DB error: {e}")
 
+# === HEADER v6.5.6 ===
 col_title, col_user = st.columns([3,1])
 with col_title:
-    st.title("📝 TEFLMate v6.5.5 SUPER")
-    st.caption("Recovery Fix • 7 Languages • Rubric + IELTS/TOEFL + AI Flag + Graph")
+    st.title("📝 TEFLMate v6.5.6 SUPER - Hash Fix")
+    st.caption("Desktop + Mobile • 7 Languages • Password Reset Fixed")
 with col_user:
     st.info(f"👤 {st.session_state.user.email[:24]} | {get_status()}" if st.session_state.user else "Not logged")
     if st.session_state.user and st.button("Logout", use_container_width=True):
@@ -314,7 +328,7 @@ with col_user:
 
 with st.sidebar:
     st.markdown("### 🔑 Your Plan"); st.info(get_status())
-    with st.expander("🔐 Change Password (Inside App)"):
+    with st.expander("🔐 Change Password (Inside App) - NEW"):
         st.caption(f"Logged as: {st.session_state.user.email if st.session_state.user else ''}")
         new_pass = st.text_input("New Password", type="password", key="new_pass_inside")
         confirm_pass = st.text_input("Confirm New Password", type="password", key="confirm_pass_inside")
@@ -354,6 +368,7 @@ with st.sidebar:
     st.caption(f"Active: {st.session_state.feedback_lang} + {st.session_state.grading_standard}")
 
 tab1,tab2,tab3,tab4,tab5,tab6 = st.tabs(["Single Essay","Batch 50 PRO","📸 Photo/PDF","📚 History+Graph","📘 Guide","🚀 SUPER 7Lang"])
+
 with tab1:
     essay = st.text_area("Paste Essay:", height=150, placeholder="Paste student essay here..."); s_name = st.text_input("Student Name:", value="Student", key="s_name_single"); level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level")
     if st.button("🚀 GRADE ESSAY ->", type="primary", use_container_width=True):
@@ -365,6 +380,7 @@ with tab1:
             if not is_pro(): st.session_state.uses+=1
             st.markdown(f"**AI Check:** {ai_flag}"); st.markdown(result_text)
             st.download_button("📄 Download PDF", create_branded_pdf(essay, result_text, level, s_name), file_name=f"Report_{level}.pdf", use_container_width=True)
+
 with tab2:
     st.markdown("### 🚀 Batch 50 SUPER 7Lang")
     sample_df = pd.DataFrame({"student_name":["Thandi","John","Aisha"],"essay":["I go to market yesterday.","My best friend is Thandi.","I broken my leg last week."]})
@@ -393,12 +409,9 @@ with tab2:
         avg_score=sum([r["Score /10"] for r in excel_rows])/len(excel_rows) if excel_rows else 0
         st.markdown(f"### Avg {avg_score:.1f}/10 - {len(results)} graded")
         st.dataframe(pd.DataFrame(results), use_container_width=True)
-        grades_df=pd.DataFrame(excel_rows); gb,_=df_to_excel_bytes_safe(grades_df,"Grades")
-        col1,col2=st.columns(2)
-        with col1: st.download_button("📊 Download Excel", gb, file_name="Grades.xlsx", use_container_width=True)
-        with col2: st.download_button("🏫 Principal PDF", create_principal_pdf(excel_rows, level_b, avg_score, school_name), file_name="Principal.pdf", use_container_width=True)
+
 with tab3:
-    st.markdown("### 📸 Photo/PDF")
+    st.markdown("### 📸 Photo/PDF - Mobile Camera Ready")
     level_p=st.selectbox("Target Level:",["A1","A2","B1","B2","C1","C2"],key="photo_level")
     camera_pic=st.camera_input("Take photo"); upload_img=st.file_uploader("Upload Image",type=["jpg","jpeg","png"],key="img_up"); upload_pdf=st.file_uploader("Upload PDF",type=["pdf"],key="pdf_up")
     image_bytes=None
@@ -415,19 +428,33 @@ with tab3:
         edited=st.text_area("Edit OCR:",value=st.session_state['last_ocr'],height=120)
         if st.button("GRADE THIS TEXT ->", type="primary", use_container_width=True):
             result_text=grade_with_groq(edited,level_p); st.markdown(result_text)
+
 with tab4:
     st.markdown("### 📚 History + Graph")
     try:
         rows=supabase.table("essays").select("*").eq("teacher_id",st.session_state.teacher_id).order("created_at",desc=True).limit(200).execute()
         if rows.data:
             df=pd.DataFrame(rows.data); st.dataframe(df[["student_name","level","score","cefr","created_at"]], use_container_width=True)
+            student_list=df["student_name"].unique().tolist(); sel=st.selectbox("Select Student:",student_list)
+            if sel:
+                sdf=df[df["student_name"]==sel].sort_values("created_at")
+                if len(sdf)>1:
+                    fig,ax=plt.subplots(); ax.plot(pd.to_datetime(sdf["created_at"]),sdf["score"],marker='o'); ax.set_title(f"{sel} Progress"); st.pyplot(fig, use_container_width=True)
         else: st.info("No history yet")
     except Exception as e: st.error(f"History error: {e}")
+
 with tab5:
-    st.markdown("## 📘 Guide")
-    st.table(pd.DataFrame([{"Lang":"English","Market":"SA/US/UK"},{"Lang":"Spanish","Market":"Mexico/Spain"},{"Lang":"Portuguese","Market":"Brazil"},{"Lang":"French","Market":"France/Africa"},{"Lang":"Arabic","Market":"MENA"},{"Lang":"Hindi","Market":"India"},{"Lang":"Chinese","Market":"China"}]))
+    st.markdown("## 📘 Guide - 7 Languages = NEED")
+    st.table(pd.DataFrame([{"Lang":"English","Market":"SA/US/UK","Teachers":"300k"},{"Lang":"Spanish","Market":"Mexico/Spain","Teachers":"300k"},{"Lang":"Portuguese","Market":"Brazil","Teachers":"500k"},{"Lang":"French","Market":"France/Africa","Teachers":"200k"},{"Lang":"Arabic","Market":"MENA","Teachers":"400k"},{"Lang":"Hindi","Market":"India","Teachers":"600k"},{"Lang":"Chinese","Market":"China","Teachers":"300k"}]))
+
 with tab6:
     st.markdown("## 🚀 SUPER 7Lang")
-    st.info(f"Current: {st.session_state.feedback_lang} + {st.session_state.grading_standard} ✅")
+    c1,c2,c3=st.columns(3)
+    with c1:
+        if st.button("🇧🇷 Set Brazil", use_container_width=True, key="set_br"): st.session_state.feedback_lang="Portuguese"; st.session_state.grading_standard="CEFR"; st.success("PT+CEFR Active"); st.balloons()
+    with c2:
+        if st.button("🇸🇦 Set Arabic", use_container_width=True, key="set_ar"): st.session_state.feedback_lang="Arabic"; st.session_state.grading_standard="IELTS"; st.success("AR+IELTS Active")
+    with c3:
+        if st.button("🇮🇳 Set Hindi", use_container_width=True, key="set_in"): st.session_state.feedback_lang="Hindi"; st.session_state.grading_standard="IELTS"; st.success("HI+IELTS Active")
 
-st.caption("TEFLMate v6.5.5 - Recovery Token Fix + Password Reset")
+st.caption("TEFLMate v6.5.6 Hash Fix • Password Reset Works Now")
