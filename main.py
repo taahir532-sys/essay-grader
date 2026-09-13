@@ -57,49 +57,48 @@ if "geo" not in st.session_state:
     else:
         st.session_state.geo = {"symbol":"$", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"USD"}
 
-# --- AUTH WRAPPER (NEW v6.1) - FIXED UNIQUE KEYS ---
+# --- FIXED AUTH - NO DUPLICATE KEYS - USES FORMS ---
 def login_screen():
     st.title("📝 TEFLMate v6.1 - Login")
     st.caption("Worldwide SaaS - 1.2M Teachers Ready")
     t1, t2 = st.tabs(["Login", "Sign Up"])
+
     with t1:
-        email = st.text_input("Email", key="login_email_final_fix_001")
-        password = st.text_input("Password", type="password", key="login_pass_final_fix_001")
-        if st.button("Login", use_container_width=True, key="login_btn_final_fix_001"):
-            try:
-                res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                st.session_state.user = res.user
-                td = supabase.table("teachers").select("*").eq("email", email).execute()
-                if td.data:
-                    st.session_state.teacher_id = td.data[0]["id"]
-                else:
-                    ins = supabase.table("teachers").insert({"email": email}).execute()
-                    st.session_state.teacher_id = ins.data[0]["id"]
-                st.rerun()
-            except Exception as e:
-                st.error(f"Login failed: {e}")
+        with st.form("login_form_fix"):
+            email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Login", use_container_width=True)
+            if submitted:
+                try:
+                    res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                    st.session_state.user = res.user
+                    td = supabase.table("teachers").select("*").eq("email", email).execute()
+                    if td.data:
+                        st.session_state.teacher_id = td.data[0]["id"]
+                    else:
+                        ins = supabase.table("teachers").insert({"email": email}).execute()
+                        st.session_state.teacher_id = ins.data[0]["id"]
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Login failed: {e}")
     with t2:
-        email2 = st.text_input("New Email", key="signup_email_final_fix_002")
-        password2 = st.text_input("New Password", type="password", key="signup_pass_final_fix_002")
-        school = st.text_input("School Name", key="school_signup_final_fix_002")
-        if st.button("Create Account", use_container_width=True, key="signup_btn_final_fix_002"):
-            try:
-                res = supabase.auth.sign_up({"email": email2, "password": password2})
-                supabase.table("teachers").insert({"email": email2, "school_name": school}).execute()
-                st.success("Account created! Now login.")
-            except Exception as e:
-                st.error(f"Signup failed: {e}")
+        with st.form("signup_form_fix"):
+            email2 = st.text_input("New Email")
+            password2 = st.text_input("New Password", type="password")
+            school = st.text_input("School Name", value="My School")
+            submitted2 = st.form_submit_button("Create Account", use_container_width=True)
+            if submitted2:
+                try:
+                    res = supabase.auth.sign_up({"email": email2, "password": password2})
+                    supabase.table("teachers").insert({"email": email2, "school_name": school}).execute()
+                    st.success("Account created! Now go to Login tab.")
+                except Exception as e:
+                    st.error(f"Signup failed: {e}")
     st.stop()
 
+# SINGLE CALL ONLY - NO TRY/EXCEPT DOUBLE CALL
 if not st.session_state.user:
-    try:
-        sess = supabase.auth.get_session()
-        if sess and sess.user:
-            st.session_state.user = sess.user
-        else:
-            login_screen()
-    except:
-        login_screen()
+    login_screen()
 
 def is_pro():
     return st.session_state.pro_expiry is not None and datetime.now() < st.session_state.pro_expiry
@@ -332,9 +331,10 @@ def save_essay_db(student_name, essay_text, level, score, cefr, feedback):
     except Exception as e:
         st.warning(f"Saved locally but DB error: {e}")
 
+# MAIN APP
 st.title("📝 TEFLMate v6.1 SaaS")
 st.caption(f"Logged in as {st.session_state.user.email} | AI Essay Grader | Worldwide")
-if st.sidebar.button("Logout", key="logout_final_fix"):
+if st.sidebar.button("Logout"):
     supabase.auth.sign_out()
     st.session_state.user = None
     st.session_state.teacher_id = None
@@ -360,7 +360,7 @@ with st.sidebar:
     if g['code'] == "ZAR":
         st.markdown(f"#### 💰 1-Click Pay ({g['code']})")
         st.caption("1. Tap a button below 2. Pay on Paystack 3. Return here 4. Tap Check Payment to unlock")
-        email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email_clean_final")
+        email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email_clean")
         if not st.session_state.pay_links and email:
             with st.spinner("Loading pay options..."):
                 for plan, amt in [("ONCE10",1000),("WEEK49",4900),("MONTH99",9900),("YEAR799",79900)]:
@@ -377,7 +377,7 @@ with st.sidebar:
             if is_pro() or (st.session_state.active_plan == "ONCE10" and (3 - st.session_state.uses) > 3):
                 st.success("✅ Your plan is already active — no need to check again")
             else:
-                if st.button("✅ Check Payment - Unlock My Plan", type="primary", use_container_width=True, key="check_pay_final"):
+                if st.button("✅ Check Payment - Unlock My Plan", type="primary", use_container_width=True):
                     if verify_all_refs():
                         st.rerun()
                     else:
@@ -394,8 +394,8 @@ with st.sidebar:
     st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
     st.divider()
     st.caption("Loved it? Send proof and I'll send your code instantly ❤️")
-    code = st.text_input("Got a code?", placeholder="Paste your code here", type="password", key="code_input_final").strip().upper()
-    if st.button("Unlock Code", key="unlock_code_final"):
+    code = st.text_input("Got a code?", placeholder="Paste your code here", type="password").strip().upper()
+    if st.button("Unlock Code"):
         now = datetime.now()
         def set_plan(p): st.session_state.active_plan = p
         if code == "TEACH10":
@@ -412,10 +412,10 @@ with st.sidebar:
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Single Essay", "Batch 50 PRO", "📸 Photo / PDF", "📚 History SaaS", "📘 Guide"])
 
 with tab1:
-    essay = st.text_area("Paste Student Essay:", height=180, placeholder="I broken my leg", key="single_essay_final")
-    s_name = st.text_input("Student Name:", value="Student", key="s_name_single_final")
-    level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level_final")
-    if st.button("GRADE ESSAY ->", key="grade_single_final"):
+    essay = st.text_area("Paste Student Essay:", height=180, placeholder="I broken my leg")
+    s_name = st.text_input("Student Name:", value="Student", key="s_name_single")
+    level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level")
+    if st.button("GRADE ESSAY ->"):
         if not is_pro() and st.session_state.uses >= 3:
             st.error("Free limit reached"); st.stop()
         with st.spinner("Grading..."):
@@ -424,7 +424,7 @@ with tab1:
             save_essay_db(s_name, essay, level, score, cefr, result_text)
             if not is_pro(): st.session_state.uses += 1
             st.markdown(result_text)
-            st.download_button("📄 Download PDF", create_branded_pdf(essay, result_text, level, s_name), file_name=f"Report_{level}.pdf", key="dl_single_pdf_final")
+            st.download_button("📄 Download PDF", create_branded_pdf(essay, result_text, level, s_name), file_name=f"Report_{level}.pdf")
             share_text = f"TEFLMate Report - {s_name}: {score}/10 CEFR {cefr} - Level {level}. {result_text[:300]}"
             st.link_button("📲 Share Report via WhatsApp (Viral)", f"https://wa.me/?text={urllib.parse.quote(share_text)}")
 
@@ -443,15 +443,15 @@ with tab2:
     })
     template_bytes, template_type = df_to_excel_bytes_safe(sample_df, "Essays")
     if template_type == "xlsx":
-        st.download_button("📥 Download Excel Template (50 Students)", template_bytes, file_name="TEFLMate_Batch_Template_50.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="template_btn_final")
+        st.download_button("📥 Download Excel Template (50 Students)", template_bytes, file_name="TEFLMate_Batch_Template_50.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="template_btn")
     else:
-        st.download_button("📥 Download CSV Template", template_bytes, file_name="TEFLMate_Batch_Template_50.csv", mime="text/csv", key="template_btn_final_csv")
+        st.download_button("📥 Download CSV Template", template_bytes, file_name="TEFLMate_Batch_Template_50.csv", mime="text/csv", key="template_btn")
     st.caption("✅ Fill 2 columns: student_name | essay")
     st.divider()
-    school_name = st.text_input("School Name for Principal Report:", value="My School", key="school_name_input_final")
-    level_b = st.selectbox("Target Level for batch:", ["A1","A2","B1","B2","C1","C2"], key="batch_level_final")
-    uploaded = st.file_uploader("Upload your filled Excel or CSV or TXT", type=["csv","txt","xlsx"], key="batch_file_final")
-    if st.button("GRADE BATCH 50 ->", key="grade_batch_final"):
+    school_name = st.text_input("School Name for Principal Report:", value="My School", key="school_name_input")
+    level_b = st.selectbox("Target Level for batch:", ["A1","A2","B1","B2","C1","C2"], key="batch_level")
+    uploaded = st.file_uploader("Upload your filled Excel or CSV or TXT", type=["csv","txt","xlsx"], key="batch_file")
+    if st.button("GRADE BATCH 50 ->"):
         if not is_pro():
             st.error(f"Batch 50 needs PRO {g['symbol']}{g['monthly']}"); st.stop()
         if not uploaded:
@@ -537,12 +537,12 @@ with tab2:
         col_d1, col_d2 = st.columns(2)
         with col_d1:
             if grades_type == "xlsx":
-                st.download_button("📊 Download Class Grades Excel", grades_bytes, file_name=f"Class_Grades_{level_b}_{datetime.now().strftime('%Y%m%d')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="dl_grades_excel_final")
+                st.download_button("📊 Download Class Grades Excel", grades_bytes, file_name=f"Class_Grades_{level_b}_{datetime.now().strftime('%Y%m%d')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             else:
-                st.download_button("📊 Download Class Grades CSV", grades_bytes, file_name=f"Class_Grades_{level_b}_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv", key="dl_grades_csv_final")
+                st.download_button("📊 Download Class Grades CSV", grades_bytes, file_name=f"Class_Grades_{level_b}_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv")
         with col_d2:
             principal_pdf_bytes = create_principal_pdf(excel_rows, level_b, avg_score, school_name)
-            st.download_button("🏫 Download Principal Report PDF", principal_pdf_bytes, file_name=f"Principal_Report_{school_name}_{level_b}.pdf", key="dl_principal_final")
+            st.download_button("🏫 Download Principal Report PDF", principal_pdf_bytes, file_name=f"Principal_Report_{school_name}_{level_b}.pdf")
         st.divider()
         st.markdown("#### 📲 Share to Parents via WhatsApp")
         st.caption("Tap to share each student's report directly to WhatsApp")
@@ -554,45 +554,45 @@ with tab2:
         for idx, r in enumerate(results):
             pdf.add_page(); pdf.set_font("Arial", 'B', 12); pdf.cell(0, 10, f"{r['Student']} - {r['Score']} - {r['CEFR']}", ln=True)
             pdf.set_font("Arial", '', 10); pdf.multi_cell(0, 6, clean(r["Result"]))
-        st.download_button("📄 Download All 50 Named Reports PDF", pdf.output(dest='S').encode('latin-1'), file_name=f"Batch_50_Named_{level_b}.pdf", key="dl_all50_final")
+        st.download_button("📄 Download All 50 Named Reports PDF", pdf.output(dest='S').encode('latin-1'), file_name=f"Batch_50_Named_{level_b}.pdf")
 
 with tab3:
     st.markdown("### 📸 Photo or PDF Scan")
-    level_p = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="photo_level_final")
+    level_p = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="photo_level")
     colA, colB = st.columns(2)
     with colA:
-        camera_pic = st.camera_input("Take photo", key="camera_final")
-        upload_img = st.file_uploader("Upload Image", type=["jpg","jpeg","png"], key="img_up_final")
+        camera_pic = st.camera_input("Take photo")
+        upload_img = st.file_uploader("Upload Image", type=["jpg","jpeg","png"], key="img_up")
     with colB:
-        upload_pdf = st.file_uploader("Upload PDF Scan", type=["pdf"], key="pdf_up_final")
+        upload_pdf = st.file_uploader("Upload PDF Scan", type=["pdf"], key="pdf_up")
     image_bytes = None
     if camera_pic: image_bytes = camera_pic.getvalue()
     elif upload_img: image_bytes = upload_img.getvalue()
     if image_bytes: st.image(image_bytes, use_container_width=True)
     if upload_pdf:
         extracted = extract_text_from_pdf(upload_pdf.getvalue())
-        st.text_area("Text from PDF:", value=extracted, height=150, key="pdf_text_area_final")
-        if st.button("GRADE PDF TEXT ->", key="grade_pdf_final"):
+        st.text_area("Text from PDF:", value=extracted, height=150, key="pdf_text_area")
+        if st.button("GRADE PDF TEXT ->"):
             result_text = grade_with_groq(extracted, level_p)
             score, cefr = extract_score_cefr(result_text)
             save_essay_db("PDF Student", extracted, level_p, score, cefr, result_text)
             if not is_pro(): st.session_state.uses += 1
             st.markdown(result_text)
-            st.download_button("📄 Download PDF", create_branded_pdf(extracted, result_text, level_p, "PDF Student"), file_name=f"PDF_{level_p}.pdf", key="dl_pdf_scan_final")
-    if image_bytes and st.button("READ & GRADE PHOTO ->", key="read_photo_final"):
+            st.download_button("📄 Download PDF", create_branded_pdf(extracted, result_text, level_p, "PDF Student"), file_name=f"PDF_{level_p}.pdf")
+    if image_bytes and st.button("READ & GRADE PHOTO ->"):
         with st.spinner("Reading..."):
             extracted = extract_text_from_image(image_bytes)
             if "OCR_ERROR" in extracted: st.error(extracted)
             else: st.session_state['last_ocr'] = extracted; st.rerun()
     if 'last_ocr' in st.session_state:
-        edited = st.text_area("We read — edit if needed:", value=st.session_state['last_ocr'], height=150, key="ocr_edit_final")
-        if st.button("GRADE THIS TEXT ->", key="grade_ocr_final"):
+        edited = st.text_area("We read — edit if needed:", value=st.session_state['last_ocr'], height=150)
+        if st.button("GRADE THIS TEXT ->"):
             result_text = grade_with_groq(edited, level_p)
             score, cefr = extract_score_cefr(result_text)
             save_essay_db("Photo Student", edited, level_p, score, cefr, result_text)
             if not is_pro(): st.session_state.uses += 1
             st.markdown(result_text)
-            st.download_button("📄 Download PDF", create_branded_pdf(edited, result_text, level_p, "Photo Student"), file_name=f"Photo_{level_p}.pdf", key="dl_photo_pdf_final")
+            st.download_button("📄 Download PDF", create_branded_pdf(edited, result_text, level_p, "Photo Student"), file_name=f"Photo_{level_p}.pdf")
 
 with tab4:
     st.markdown("### 📚 Your History - SaaS")
@@ -602,7 +602,7 @@ with tab4:
             df = pd.DataFrame(rows.data)
             st.dataframe(df[["student_name","level","score","cefr","created_at"]])
             csv_bytes, _ = df_to_excel_bytes_safe(df)
-            st.download_button("📥 Download All History Excel", csv_bytes, file_name="TEFLMate_History.xlsx", key="dl_history_final")
+            st.download_button("📥 Download All History Excel", csv_bytes, file_name="TEFLMate_History.xlsx")
             avg = df["score"].mean()
             st.metric("Lifetime Average", f"{avg:.1f}/10")
             st.metric("Total Essays Graded", len(df))
