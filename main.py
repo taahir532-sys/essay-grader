@@ -100,8 +100,8 @@ if has_token:
         pass
     st.title("🔐 TEFLMate - Set New Password")
     st.info("Reset link detected - set your new password below")
-    new_p = st.text_input("New Password (6+ chars)", type="password", key="rec_new_fixed_800")
-    conf_p = st.text_input("Confirm", type="password", key="rec_conf_fixed_800")
+    new_p = st.text_input("New Password (6+ chars)", type="password", key="rec_new_fixed_900")
+    conf_p = st.text_input("Confirm", type="password", key="rec_conf_fixed_900")
     if st.button("✅ UPDATE PASSWORD & LOGIN", type="primary", use_container_width=True):
         if len(new_p) < 6: st.warning("6+ chars")
         elif new_p!= conf_p: st.error("No match")
@@ -135,7 +135,7 @@ def login_screen():
     st.caption("Photo-grade handwritten homework • Track progress • Parent reports in 7 languages")
     t1, t2 = st.tabs(["🔑 Login", "✨ Sign Up"])
     with t1:
-        with st.form("login_form_v800"):
+        with st.form("login_form_v900"):
             email = st.text_input("Email"); password = st.text_input("Password", type="password")
             if st.form_submit_button("🚀 Login", use_container_width=True, type="primary"):
                 try:
@@ -147,7 +147,7 @@ def login_screen():
                     st.rerun()
                 except Exception as e: st.error(f"Login failed: {e}")
         with st.expander("🔓 Forgot Password?"):
-            fp_email = st.text_input("Email to reset:", key="fp_email_800")
+            fp_email = st.text_input("Email to reset:", key="fp_email_900")
             if st.session_state.last_reset and (datetime.now()-st.session_state.last_reset).total_seconds()<3600:
                 st.warning(f"Wait {int(60-(datetime.now()-st.session_state.last_reset).total_seconds()//60)} mins - Supabase rate limit")
             else:
@@ -157,8 +157,8 @@ def login_screen():
                         st.session_state.last_reset = datetime.now(); st.success(f"Sent to {fp_email} - Check spam too")
                     except Exception as e: st.error(str(e))
     with t2:
-        with st.form("signup_form_v800"):
-            email2 = st.text_input("New Email", key="s_email_800"); password2 = st.text_input("New Password", type="password", key="s_pass_800"); school = st.text_input("School Name", value="My School")
+        with st.form("signup_form_v900"):
+            email2 = st.text_input("New Email", key="s_email_900"); password2 = st.text_input("New Password", type="password", key="s_pass_900"); school = st.text_input("School Name", value="My School")
             if st.form_submit_button("Create Account", use_container_width=True):
                 try:
                     supabase.auth.sign_up({"email": email2, "password": password2})
@@ -314,7 +314,6 @@ def save_essay_db(student_name, essay_text, level, score, cefr, feedback):
     try: supabase.table("essays").insert({"teacher_id": st.session_state.teacher_id, "student_name": student_name, "essay_text": essay_text, "level": level, "score": score, "cefr": cefr, "feedback": feedback}).execute()
     except Exception as e: st.warning(f"DB error: {e}")
 
-# FIXED CRASH - was [3][1]
 col_title, col_user = st.columns([3,1])
 with col_title:
     st.title("📚 TEFLMate - Class Portfolio")
@@ -327,8 +326,8 @@ with col_user:
 with st.sidebar:
     st.markdown("### 🔑 Your Plan"); st.info(get_status())
     with st.expander("🔐 Change Password"):
-        new_pass = st.text_input("New Password", type="password", key="new_pass_800")
-        confirm_pass = st.text_input("Confirm New Password", type="password", key="confirm_pass_800")
+        new_pass = st.text_input("New Password", type="password", key="new_pass_900")
+        confirm_pass = st.text_input("Confirm New Password", type="password", key="confirm_pass_900")
         if st.button("Update Password", use_container_width=True, type="primary"):
             if not new_pass or len(new_pass) < 6: st.warning("6+ chars")
             elif new_pass!= confirm_pass: st.error("No match")
@@ -339,11 +338,11 @@ with st.sidebar:
     g = st.session_state.geo
     st.markdown(f"#### 💰 Plans ({g['code']}) - Keep Portfolio")
 
-    # === ENTER CODE BUTTON - RESTORED ===
+    # === PROMO - FIXED EMPTY NOW ===
     with st.expander("🎟️ Enter Code / Promo"):
-        promo = st.text_input("Promo Code:", placeholder="TEFL2024", key="promo_code_800")
-        if st.button("✅ Redeem Code", use_container_width=True):
-            if promo.upper() in ["TEFL2024","KEEP99","TEACHFREE","BRAZIL50","INDIA50"]:
+        promo = st.text_input("Promo Code:", value="", placeholder="Enter code", key="promo_code_empty_v900")
+        if st.button("✅ Redeem Code", use_container_width=True, key="redeem_btn_v900"):
+            if promo.strip().upper() in ["TEFL2024","KEEP99","TEACHFREE","BRAZIL50","INDIA50"]:
                 st.session_state.pro_expiry = datetime.now() + timedelta(days=30)
                 st.session_state.active_plan = "PROMO"
                 try:
@@ -351,9 +350,10 @@ with st.sidebar:
                 except: pass
                 st.success("✅ Code accepted - 30 days PRO unlocked!"); st.balloons(); st.rerun()
             else:
-                st.error("Invalid code - try TEFL2024")
+                if promo.strip()!="":
+                    st.error("Invalid code")
 
-    email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email_800")
+    email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email_900")
     if not st.session_state.pay_links and email:
         with st.spinner("Loading..."):
             for plan, amt in [("ONCE10",1000),("WEEK49",4900),("MONTH99",9900),("YEAR799",79900)]:
@@ -410,13 +410,13 @@ with tab1:
 with tab3:
     st.markdown("### 📸 Photo/PDF - Grade 40 handwritten books with phone. Brazil/India NEED this.")
     level_p=st.selectbox("Target Level:",["A1","A2","B1","B2","C1","C2"],key="photo_level")
-    camera_pic=st.camera_input("Take photo"); upload_img=st.file_uploader("Upload Image",type=["jpg","jpeg","png"],key="img_up_800"); upload_pdf=st.file_uploader("Upload PDF",type=["pdf"],key="pdf_up_800")
+    camera_pic=st.camera_input("Take photo"); upload_img=st.file_uploader("Upload Image",type=["jpg","jpeg","png"],key="img_up_900"); upload_pdf=st.file_uploader("Upload PDF",type=["pdf"],key="pdf_up_900")
     image_bytes=None
     if camera_pic: image_bytes=camera_pic.getvalue()
     elif upload_img: image_bytes=upload_img.getvalue()
     if image_bytes: st.image(image_bytes,use_container_width=True)
     if upload_pdf:
-        extracted=extract_text_from_pdf(upload_pdf.getvalue()); st.text_area("Text from PDF:",value=extracted,height=120, key="pdf_text_800")
+        extracted=extract_text_from_pdf(upload_pdf.getvalue()); st.text_area("Text from PDF:",value=extracted,height=120, key="pdf_text_900")
         if st.button("GRADE PDF TEXT -> Save to Portfolio", type="primary", use_container_width=True):
             try:
                 result_text=grade_with_groq(extracted,level_p); score,cefr,_=extract_score_cefr(result_text); save_essay_db("PDF Student",extracted,level_p,score,cefr,result_text); st.markdown(result_text)
@@ -434,8 +434,8 @@ with tab2:
     st.markdown("### ⚡ Batch 15 PRO - Safe batch, saves after each essay (no crash)")
     sample_df = pd.DataFrame({"student_name":["Thandi","John","Aisha"],"essay":["I go to market yesterday.","My best friend is Thandi.","I broken my leg last week."]})
     b,_ = df_to_excel_bytes_safe(sample_df,"Essays"); st.download_button("📥 Download Template", b, file_name="Template.xlsx", use_container_width=True)
-    school_name = st.text_input("School Name:", value="My School", key="school_name_800"); level_b = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="batch_level_800")
-    uploaded = st.file_uploader("Upload Excel/CSV (max 15)", type=["csv","xlsx","txt"], key="batch_file_800")
+    school_name = st.text_input("School Name:", value="My School", key="school_name_900"); level_b = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="batch_level_900")
+    uploaded = st.file_uploader("Upload Excel/CSV (max 15)", type=["csv","xlsx","txt"], key="batch_file_900")
     if st.button("🚀 GRADE BATCH 15 -> Save to Portfolio", type="primary", use_container_width=True):
         if not is_pro(): st.error("Batch needs PRO - Upgrade to keep portfolio"); st.stop()
         if not uploaded: st.warning("Upload first"); st.stop()
@@ -474,10 +474,10 @@ with tab6:
     st.markdown("## 🚀 SUPER 7Lang - One click set market")
     c1,c2,c3=st.columns(3)
     with c1:
-        if st.button("🇧🇷 Set Brazil", use_container_width=True, key="set_br_800"): st.session_state.feedback_lang="Portuguese"; st.session_state.grading_standard="CEFR"; st.success("PT+CEFR - Brazil ready"); st.balloons()
+        if st.button("🇧🇷 Set Brazil", use_container_width=True, key="set_br_900"): st.session_state.feedback_lang="Portuguese"; st.session_state.grading_standard="CEFR"; st.success("PT+CEFR - Brazil ready"); st.balloons()
     with c2:
-        if st.button("🇸🇦 Set Arabic", use_container_width=True, key="set_ar_800"): st.session_state.feedback_lang="Arabic"; st.session_state.grading_standard="IELTS"; st.success("AR+IELTS - MENA ready")
+        if st.button("🇸🇦 Set Arabic", use_container_width=True, key="set_ar_900"): st.session_state.feedback_lang="Arabic"; st.session_state.grading_standard="IELTS"; st.success("AR+IELTS - MENA ready")
     with c3:
-        if st.button("🇮🇳 Set Hindi", use_container_width=True, key="set_in_800"): st.session_state.feedback_lang="Hindi"; st.session_state.grading_standard="IELTS"; st.success("HI+IELTS - India ready")
+        if st.button("🇮🇳 Set Hindi", use_container_width=True, key="set_in_900"): st.session_state.feedback_lang="Hindi"; st.session_state.grading_standard="IELTS"; st.success("HI+IELTS - India ready")
 
 st.caption("TEFLMate - Class Portfolio • Essays saved forever • Export anytime")
