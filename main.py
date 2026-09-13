@@ -77,18 +77,11 @@ if "geo" not in st.session_state:
     elif country in ["DE","FR","NL","IT","ES","PT","IE"]: st.session_state.geo = {"symbol":"€", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"EUR"}
     else: st.session_state.geo = {"symbol":"$", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"USD"}
 
-# === v6.5.6 RECOVERY MODE - AFTER HASH CONVERSION ===
+# === v6.5.6 RECOVERY MODE - FIXED - ONLY CHANGE ===
 q_rec = st.query_params
 if "access_token" in q_rec:
     st.title("🔐 TEFLMate - Set New Password")
     st.success("✅ Reset link verified! Now set your new password below.")
-    try:
-        access_token = q_rec.get("access_token", "")
-        refresh_token = q_rec.get("refresh_token", "")
-        if access_token and refresh_token:
-            supabase.auth.set_session(access_token, refresh_token)
-    except Exception as e:
-        st.warning(f"Session setup: {e}")
     new_p = st.text_input("New Password (6+ characters)", type="password", key="rec_new_656")
     conf_p = st.text_input("Confirm New Password", type="password", key="rec_conf_656")
     if st.button("✅ UPDATE PASSWORD & LOGIN", type="primary", use_container_width=True):
@@ -98,20 +91,16 @@ if "access_token" in q_rec:
             st.error("Passwords don't match")
         else:
             try:
+                access_token = q_rec.get("access_token", "")
+                refresh_token = q_rec.get("refresh_token", "")
+                supabase.auth.set_session(access_token, refresh_token)
                 supabase.auth.update_user({"password": new_p})
-                st.success("✅ Password updated! Clearing link...")
+                st.success("✅ Password updated! Please login with new password now.")
                 st.balloons()
                 st.query_params.clear()
-                sess = supabase.auth.get_session()
-                if sess and sess.user:
-                    st.session_state.user = sess.user
-                    td = supabase.table("teachers").select("*").eq("email", sess.user.email).execute()
-                    if td.data: st.session_state.teacher_id = td.data[0]["id"]
-                    st.rerun()
-                else:
-                    st.info("Now login with new password")
-                    st.query_params.clear()
-                    st.stop()
+                supabase.auth.sign_out()
+                st.session_state.user = None
+                st.session_state.teacher_id = None
             except Exception as e:
                 st.error(f"Failed: {e}")
     st.stop()
