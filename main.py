@@ -16,9 +16,9 @@ except ImportError:
     fitz = None
 from supabase import create_client
 
-# YOUR KEYS - HARDWIRED
-SUPABASE_URL = "https://ndmrrcykkwmjoaobjuyb.supabase.co"
-SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kbXJyY3lra3dtam9vYWJqdXliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyOTQwODUsImV4cCI6MjEwNDg3MDA4NX0.zIion_5JTBHkLjeWdg7HCjA4FQ7QRbI5JIj3YmzlGSg"
+# YOUR KEYS - FROM STREAMLIT SECRETS (NOT HARDWIRED)
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_ANON = st.secrets["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_ANON)
 
 YOUR_EMAIL = "taahir532@gmail.com"
@@ -69,7 +69,6 @@ def login_screen():
             try:
                 res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                 st.session_state.user = res.user
-                # get teacher id
                 td = supabase.table("teachers").select("*").eq("email", email).execute()
                 if td.data:
                     st.session_state.teacher_id = td.data[0]["id"]
@@ -93,7 +92,6 @@ def login_screen():
     st.stop()
 
 if not st.session_state.user:
-    # check if supabase session exists
     try:
         sess = supabase.auth.get_session()
         if sess and sess.user:
@@ -334,7 +332,6 @@ def save_essay_db(student_name, essay_text, level, score, cefr, feedback):
     except Exception as e:
         st.warning(f"Saved locally but DB error: {e}")
 
-# MAIN APP - v6.0.7 CORE UNTOUCHED
 st.title("📝 TEFLMate v6.1 SaaS")
 st.caption(f"Logged in as {st.session_state.user.email} | AI Essay Grader | Worldwide")
 if st.sidebar.button("Logout"):
@@ -428,7 +425,6 @@ with tab1:
             if not is_pro(): st.session_state.uses += 1
             st.markdown(result_text)
             st.download_button("📄 Download PDF", create_branded_pdf(essay, result_text, level, s_name), file_name=f"Report_{level}.pdf")
-            # Share link
             share_text = f"TEFLMate Report - {s_name}: {score}/10 CEFR {cefr} - Level {level}. {result_text[:300]}"
             st.link_button("📲 Share Report via WhatsApp (Viral)", f"https://wa.me/?text={urllib.parse.quote(share_text)}")
 
