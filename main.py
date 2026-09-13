@@ -1,4 +1,13 @@
 import streamlit as st
+# --- UPTIME ROBOT KEEP-ALIVE - DO NOT REMOVE ---
+# App URL: https://essay-grader-3atbxqeqdfdp9huwezx57.streamlit.app
+# UptimeRobot Ping URL: https://essay-grader-3atbxqeqdfdp9huwezx57.streamlit.app/?ping
+# Set UptimeRobot to ping every 5 mins
+if "ping" in st.query_params or "uptime" in st.query_params or "health" in st.query_params:
+    st.write("OK - TEFLMate Awake")
+    st.stop()
+# --- END UPTIME BLOCK ---
+
 from groq import Groq
 from datetime import datetime, timedelta
 from fpdf import FPDF
