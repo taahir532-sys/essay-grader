@@ -13,6 +13,21 @@ if (hash && hash.includes('access_token')) {
 }
 </script>
 """, height=0)
+components.html("""
+<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiVEVGTE1hdGUiLCJzaG9ydF9uYW1lIjoiVEVGTE1hdGUiLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzExMTExMSIsInRoZW1lX2NvbG9yIjoiIzExMTExMSJ9">
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault(); deferredPrompt = e;
+  const btn = document.createElement('button');
+  btn.innerText = '📲 Install TEFLMate App';
+  btn.style = 'position:fixed;bottom:22px;right:18px;background:#111;color:white;padding:14px 22px;border-radius:12px;font-weight:800;z-index:9999;border:none;box-shadow:0 4px 20px rgba(0,0,0,0.4);cursor:pointer;';
+  btn.onclick = () => { deferredPrompt.prompt(); deferredPrompt.userChoice.then(()=>{btn.remove();}); };
+  document.body.appendChild(btn);
+  setTimeout(()=>{if(btn.parentNode) btn.remove();}, 15000);
+});
+</script>
+""", height=0)
 from groq import Groq
 from datetime import datetime, timedelta
 from fpdf import FPDF
@@ -36,7 +51,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_ANON)
 def get_groq():
     return Groq(api_key=st.secrets["GROQ_API_KEY"])
 YOUR_EMAIL = "taahir532@gmail.com"
-st.set_page_config(page_title="TEFLMate - Class Portfolio", page_icon="📚", layout="wide")
+st.set_page_config(page_title="TEFLMate - Class Portfolio", page_icon="📚", layout="wide", initial_sidebar_state="expanded")
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
@@ -177,7 +192,7 @@ if st.session_state.user is None:
                     except: pass
     except: pass
 def login_screen():
-    st.markdown("""<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate</div><div class="tefl-badge">TEFLMate v6.73</div></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate</div><div class="tefl-badge">TEFLMate v6.73a</div></div>""", unsafe_allow_html=True)
     col1, col2 = st.columns([1.2,1])
     with col1:
         st.markdown("""<div class="landing-hero"><h2 style="margin:0;">Grade 40 books in 2 minutes 📸</h2><p style="color:#555;">Photo-grade • Track progress • Parent reports in 9 languages • Confidence flag</p><ul><li>✅ Snap photo → Edit OCR → Grade → Save</li><li>✅ Grammar/Vocab/Coherence breakdown</li><li>✅ Parent reports in home language</li></ul></div>""", unsafe_allow_html=True)
@@ -186,9 +201,8 @@ def login_screen():
         if DEMO_URL:
             st.video(DEMO_URL)
         else:
-            st.info("📱 30 sec demo coming soon - Record: Take photo → Edit text → Grade")
+            st.info("📱 30 sec demo coming soon")
             st.image("https://via.placeholder.com/600x340/111111/FFFFFF.png?text=Your+Demo+Video+Here+-+Add+DEMO_VIDEO_URL+in+Secrets", use_container_width=True)
-            st.caption("Add DEMO_VIDEO_URL in Secrets → auto shows video")
     with col2:
         st.markdown("#### ⭐ What teachers say")
         st.markdown('<div class="testimonial"><b>Teacher from Durban:</b> "Saves 5hrs a week. Parents love reports!" ⭐⭐⭐⭐⭐</div>', unsafe_allow_html=True)
@@ -275,16 +289,13 @@ def extract_score_cefr(text):
     except:
         return 5, "B1", ""
 def parse_dimensions(text):
-    # Try JSON first, fallback to regex
     try:
-        # find json block
         j_match = re.search(r'\{.*\}', text, re.DOTALL)
         if j_match:
             j = json.loads(j_match.group(0))
             return j
     except:
         pass
-    # fallback defaults from text
     score, cefr, _ = extract_score_cefr(text)
     return {"grammar": score, "vocabulary": score, "coherence": score, "task_achievement": score, "overall": score, "cefr": cefr, "confidence": "medium", "feedback_text": text}
 def df_to_excel_bytes_safe(df, sheet_name="Sheet1"):
@@ -435,7 +446,6 @@ def grade_with_groq(essay_text, level):
         level_inst = f"Target {level} - BE GENEROUS. 30+ words basic communication = 6/10 min. Good = 7-8/10. Only <15 words = below 5. Integer scores only."
     else:
         level_inst = f"Target {level} - Cambridge standard. Integer scores only."
-    # Official rubric anchors
     rubric_anchors = """
     CEFR A1: Can write simple isolated phrases. Basic personal info. Many errors but understandable.
     CEFR A2: Can write short simple notes, messages, personal letters. Simple sentences linked with and/but/because.
@@ -454,7 +464,6 @@ def grade_with_groq(essay_text, level):
     """
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}], temperature=0, seed=42)
     result = res.choices[0].message.content
-    # ensure JSON extractable
     st.session_state.grade_cache[cache_key] = result
     return result
 def save_essay_db(student_name, essay_text, level, score, cefr, feedback):
@@ -466,15 +475,18 @@ def save_essay_db(student_name, essay_text, level, score, cefr, feedback):
         return False
 col_title, col_user = st.columns([3,1])
 with col_title:
-    st.markdown("""<div class="tefl-header"><div><div style="font-size:22px;font-weight:800;">📚 TEFLMate - Class Portfolio</div><div style="font-size:12px;opacity:0.8;">Track progress • Photo-grade • 9 languages • Confidence flag</div></div><div class="tefl-badge">TEFLMate v6.73</div></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="tefl-header"><div><div style="font-size:22px;font-weight:800;">📚 TEFLMate - Class Portfolio</div><div style="font-size:12px;opacity:0.8;">Track progress • Photo-grade • 9 languages • Confidence flag</div></div><div class="tefl-badge">TEFLMate v6.73a</div></div>""", unsafe_allow_html=True)
 with col_user:
     st.info(f"👤 {st.session_state.user.email[:20]} | {get_status()}" if st.session_state.user else "Not logged")
     if st.session_state.user and st.button("Logout", use_container_width=True):
         supabase.auth.sign_out(); st.session_state.user=None; st.session_state.teacher_id=None; st.rerun()
 if st.session_state.promo_success:
     st.balloons(); st.success("🎉 Code applied - saved!"); st.session_state.promo_success = False
+
+# === LEFT SIDE MENU - 100% RESTORED ===
 with st.sidebar:
-    st.markdown("### 🔑 Your Plan"); st.info(get_status())
+    st.markdown("### 🔑 Your Plan")
+    st.info(get_status())
     if st.session_state.teacher_id:
         try:
             ref_code = f"TEFL{str(st.session_state.teacher_id)[:6].upper()}"
@@ -541,6 +553,7 @@ with st.sidebar:
     st.markdown("#### 🌎 9 Languages")
     st.session_state.feedback_lang = st.selectbox("Parent Feedback Language:", ["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese","Zulu","Xhosa"], index=["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese","Zulu","Xhosa"].index(st.session_state.feedback_lang) if st.session_state.feedback_lang in ["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese","Zulu","Xhosa"] else 0)
     st.session_state.grading_standard = st.selectbox("Standard:", ["CEFR","IELTS","TOEFL","US Grade"], index=["CEFR","IELTS","TOEFL","US Grade"].index(st.session_state.grading_standard))
+
 tab4, tab1, tab3, tab2, tab5, tab6 = st.tabs(["📚 Portfolio","✍️ Grade Essay","📸 Photo/PDF","⚡ Batch 50 PRO","📘 Guide","🚀 SUPER 7Lang"])
 with tab4:
     st.markdown("### 📚 Your Class Portfolio")
@@ -681,8 +694,8 @@ with tab2:
         if is_pro():
             st.download_button("📄 Principal PDF (PRO)", create_principal_pdf(excel_rows, level_b, avg_score, school_name), file_name=f"Principal_{school_name}.pdf", use_container_width=True, key="principal_pdf_1967")
 with tab5:
-    st.markdown("## 📘 Teacher Guide - How to Use TEFLMate v6.73")
-    st.caption("NEW: Edit OCR + Confidence flag + Dimensions")
+    st.markdown("## 📘 Teacher Guide - How to Use TEFLMate v6.73a")
+    st.caption("NEW: Edit OCR + Confidence flag + Dimensions - Left menu fixed")
     colA, colB = st.columns(2)
     with colA:
         st.markdown("### 📚 1. Portfolio")
@@ -694,7 +707,7 @@ with tab5:
     with colB:
         st.markdown("### ⚡ 4. Batch 50 PRO")
         st.markdown("Template → 50 students → Upload → Shows confidence per student")
-        st.markdown("### 💡 Pro Tips v6.73")
+        st.markdown("### 💡 Pro Tips v6.73a")
         st.warning("Low confidence? Edit text and re-grade.\n\nA1/A2 generous by design.\n\nDimensions help parent understand.")
     st.divider()
     st.markdown("**Workflow:** Photo → Edit → Grade → Confidence High → Portfolio → Parent PDF")
@@ -720,4 +733,4 @@ with c_pay2:
     st.link_button("📧 Email proof", "mailto:taahir532@gmail.com?subject=TEFLMate Payment Proof", use_container_width=True)
 with c_pay3:
     st.link_button("💙 Pay with PayPal", "https://paypal.me/TaahirMahomed", use_container_width=True)
-st.caption("TEFLMate v6.73 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
+st.caption("TEFLMate v6.73a • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
