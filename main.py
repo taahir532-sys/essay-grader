@@ -292,17 +292,17 @@ def login_screen():
                     else:
                         ins = supabase.table("teachers").insert({"email": email}).execute(); st.session_state.teacher_id = ins.data[0]["id"]
                     st.rerun()
-                except Exception as e: st.error(f"Login failed: {e}")
-                            with st.expander("🔓 Forgot Password?"):
+                           except Exception as e: st.error(f"Login failed: {e}")
+        with st.expander("🔓 Forgot Password?"):
             fp_email = st.text_input("Email to reset:", key="fp_email_1967")
-            if st.session_state.last_reset and (datetime.now()-st.session_state.last_reset).total_seconds()<3600:
+            if st.session_state.last_reset and (datetime.now()-st.session_state.last_reset).seconds < 60:
                 st.warning("Wait a bit")
             else:
                 if st.button("📧 Send Reset Link", use_container_width=True):
                     try:
-                        supabase.auth.reset_password_for_email(fp_email, {"redirect_to": "https://essay-grader-3atbxqeqdfpdh9huwezx57.streamlit.app/"})
+                        supabase.auth.reset_password_for_email(fp_email, {"redirect_to": ""})
                         st.session_state.last_reset = datetime.now(); st.success(f"Sent to {fp_email}")
-                    except Exception as e: st.error(str(e))
+                    except Exception as e: st.error(str(e))             
     with t2:
         ref_code_from_url = ""
         try:
