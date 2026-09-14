@@ -13,8 +13,9 @@ if (hash && hash.includes('access_token')) {
 }
 </script>
 """, height=0)
+# FIXED MANIFEST - valid, was causing sidebar crash
 components.html("""
-<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiVEVGTE1hdGUiLCJzaG9ydF9uYW1lIjoiVEVGTE1hdGUiLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzExMTExMSIsInRoZW1lX2NvbG9yIjoiIzExMTExMSJ9">
+<link rel="manifest" href='data:application/json;base64,eyJuYW1lIjoiVEVGTE1hdGUiLCJzaG9ydF9uYW1lIjoiVEVGTE1hdGUiLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzExMSIsInRoZW1lX2NvbG9yIjoiIzExMSJ9'>
 <script>
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -56,7 +57,6 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
 html, body, [class*="css"] {font-family:'Inter', sans-serif;}
-header {visibility:hidden;}
 .main > div {padding-top:10px;}
 .stButton>button {
     background:#111!important;color:white!important;
@@ -83,7 +83,6 @@ div[data-testid="stCameraInput"] {border:2px dashed #111; border-radius:16px; pa
     background:#FFD60A; color:#111; padding:6px 14px; border-radius:20px;
     font-weight:800; font-size:13px; letter-spacing:0.5px;
 }
-.dimension-card {background:#f8f9fa; border:1px solid #eee; border-radius:12px; padding:12px; text-align:center;}
 .landing-hero {
     background:linear-gradient(135deg,#f8f9fa 0%,#e9ecef 100%);
     border-radius:20px; padding:24px; border:1px solid #eee;
@@ -192,17 +191,13 @@ if st.session_state.user is None:
                     except: pass
     except: pass
 def login_screen():
-    st.markdown("""<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate</div><div class="tefl-badge">TEFLMate v6.73a</div></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate</div><div class="tefl-badge">TEFLMate v6.73b</div></div>""", unsafe_allow_html=True)
     col1, col2 = st.columns([1.2,1])
     with col1:
         st.markdown("""<div class="landing-hero"><h2 style="margin:0;">Grade 40 books in 2 minutes 📸</h2><p style="color:#555;">Photo-grade • Track progress • Parent reports in 9 languages • Confidence flag</p><ul><li>✅ Snap photo → Edit OCR → Grade → Save</li><li>✅ Grammar/Vocab/Coherence breakdown</li><li>✅ Parent reports in home language</li></ul></div>""", unsafe_allow_html=True)
-        st.markdown("#### 🎥 Demo - How it works")
         DEMO_URL = st.secrets.get("DEMO_VIDEO_URL", "")
-        if DEMO_URL:
-            st.video(DEMO_URL)
-        else:
-            st.info("📱 30 sec demo coming soon")
-            st.image("https://via.placeholder.com/600x340/111111/FFFFFF.png?text=Your+Demo+Video+Here+-+Add+DEMO_VIDEO_URL+in+Secrets", use_container_width=True)
+        if DEMO_URL: st.video(DEMO_URL)
+        else: st.info("📱 Demo video - add DEMO_VIDEO_URL in Secrets")
     with col2:
         st.markdown("#### ⭐ What teachers say")
         st.markdown('<div class="testimonial"><b>Teacher from Durban:</b> "Saves 5hrs a week. Parents love reports!" ⭐⭐⭐⭐⭐</div>', unsafe_allow_html=True)
@@ -248,10 +243,8 @@ def login_screen():
             if "ref" in st.query_params:
                 ref_code_from_url = st.query_params.get("ref")
                 if isinstance(ref_code_from_url, list): ref_code_from_url = ref_code_from_url[0]
-        except:
-            pass
-        if ref_code_from_url:
-            st.success(f"🎁 Referral code {ref_code_from_url} applied!")
+        except: pass
+        if ref_code_from_url: st.success(f"🎁 Referral code {ref_code_from_url} applied!")
         with st.form("signup_form_final_1967"):
             email2 = st.text_input("New Email", key="s_email_1967"); password2 = st.text_input("New Password", type="password", key="s_pass_1967"); school = st.text_input("School Name", value="My School")
             if st.form_submit_button("Create Account", use_container_width=True):
@@ -459,7 +452,7 @@ def grade_with_groq(essay_text, level):
     prompt = f"""You are kind Cambridge examiner for {level}. {level_inst}. {std_inst}. {lang_inst}.
     {rubric_anchors}
     Task: Grade this essay: "{essay_text[:2000]}"
-    Return ONLY valid JSON with keys: grammar (0-10 int), vocabulary (0-10), coherence (0-10), task_achievement (0-10), overall (0-10 int), cefr (A1-C2), ielts (0-9 if needed else 0), confidence (high/medium/low), feedback_text (full feedback with Score X/10, Strengths, Mistake table, Corrected version, Parent summary). ASCII only. No markdown outside JSON string escaping.
+    Return ONLY valid JSON with keys: grammar (0-10 int), vocabulary (0-10), coherence (0-10), task_achievement (0-10), overall (0-10 int), cefr (A1-C2), ielts (0-9 if needed else 0), confidence (high/medium/low), feedback_text (full feedback with Score X/10, Strengths, Mistake table, Corrected version, Parent summary). ASCII only.
     Example JSON: {{"grammar":7,"vocabulary":6,"coherence":7,"task_achievement":8,"overall":7,"cefr":"B1","ielts":6.0,"confidence":"high","feedback_text":"Score: 7/10..."}}
     """
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}], temperature=0, seed=42)
@@ -475,7 +468,7 @@ def save_essay_db(student_name, essay_text, level, score, cefr, feedback):
         return False
 col_title, col_user = st.columns([3,1])
 with col_title:
-    st.markdown("""<div class="tefl-header"><div><div style="font-size:22px;font-weight:800;">📚 TEFLMate - Class Portfolio</div><div style="font-size:12px;opacity:0.8;">Track progress • Photo-grade • 9 languages • Confidence flag</div></div><div class="tefl-badge">TEFLMate v6.73a</div></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="tefl-header"><div><div style="font-size:22px;font-weight:800;">📚 TEFLMate - Class Portfolio</div><div style="font-size:12px;opacity:0.8;">Track progress • Photo-grade • 9 languages • Confidence flag</div></div><div class="tefl-badge">TEFLMate v6.73b</div></div>""", unsafe_allow_html=True)
 with col_user:
     st.info(f"👤 {st.session_state.user.email[:20]} | {get_status()}" if st.session_state.user else "Not logged")
     if st.session_state.user and st.button("Logout", use_container_width=True):
@@ -483,7 +476,7 @@ with col_user:
 if st.session_state.promo_success:
     st.balloons(); st.success("🎉 Code applied - saved!"); st.session_state.promo_success = False
 
-# === LEFT SIDE MENU - 100% RESTORED ===
+# ===== LEFT MENU - 100% RESTORED FROM V6.72 =====
 with st.sidebar:
     st.markdown("### 🔑 Your Plan")
     st.info(get_status())
@@ -538,7 +531,7 @@ with st.sidebar:
             elif code!= "": st.error(f"Invalid code: {code}")
     email = st.text_input("Email for receipt:", value=YOUR_EMAIL, key="pay_email_1967")
     if not st.session_state.pay_links and email:
-        with st.spinner("Loading..."):
+        with st.spinner("Loading Paystack..."):
             for plan, amt in [("ONCE10",1000),("WEEK49",4900),("MONTH99",9900),("YEAR799",79900)]:
                 res = init_paystack(email, amt, plan)
                 if res.get("status"): st.session_state.pay_links[plan]=res["data"]["authorization_url"]; st.session_state.pay_refs[plan]=res["data"]["reference"]
@@ -551,8 +544,12 @@ with st.sidebar:
             if verify_all_refs(): st.rerun()
     st.divider()
     st.markdown("#### 🌎 9 Languages")
-    st.session_state.feedback_lang = st.selectbox("Parent Feedback Language:", ["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese","Zulu","Xhosa"], index=["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese","Zulu","Xhosa"].index(st.session_state.feedback_lang) if st.session_state.feedback_lang in ["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese","Zulu","Xhosa"] else 0)
-    st.session_state.grading_standard = st.selectbox("Standard:", ["CEFR","IELTS","TOEFL","US Grade"], index=["CEFR","IELTS","TOEFL","US Grade"].index(st.session_state.grading_standard))
+    st.session_state.feedback_lang = st.selectbox("Parent Feedback Language:", ["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese","Zulu","Xhosa"], index=["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese","Zulu","Xhosa"].index(st.session_state.feedback_lang) if st.session_state.feedback_lang in ["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese","Zulu","Xhosa"] else 0, key="lang_select_1967")
+    st.session_state.grading_standard = st.selectbox("Standard:", ["CEFR","IELTS","TOEFL","US Grade"], index=["CEFR","IELTS","TOEFL","US Grade"].index(st.session_state.grading_standard), key="std_select_1967")
+    st.divider()
+    st.markdown("#### ❤️ PayPal / Payshap")
+    st.caption("Payshap: 0658006750")
+    st.link_button("💙 Pay with PayPal", "https://paypal.me/TaahirMahomed", use_container_width=True)
 
 tab4, tab1, tab3, tab2, tab5, tab6 = st.tabs(["📚 Portfolio","✍️ Grade Essay","📸 Photo/PDF","⚡ Batch 50 PRO","📘 Guide","🚀 SUPER 7Lang"])
 with tab4:
@@ -618,8 +615,7 @@ with tab1:
                 if ok: st.success(f"✅ Saved: {score}/10 {cefr} | {ai_flag}")
                 c1,c2,c3,c4 = st.columns(4)
                 c1.metric("Grammar", f"{parsed.get('grammar',score)}/10"); c2.metric("Vocab", f"{parsed.get('vocabulary',score)}/10"); c3.metric("Coherence", f"{parsed.get('coherence',score)}/10"); c4.metric("Confidence", parsed.get('confidence','medium'))
-                if parsed.get('confidence')=='low':
-                    st.warning("⚠️ Low confidence — please review score, essay very short or unclear")
+                if parsed.get('confidence')=='low': st.warning("⚠️ Low confidence — please review")
                 st.markdown(parsed.get('feedback_text', result_raw))
                 st.download_button("📄 Parent Report PDF", create_branded_pdf(essay, parsed.get('feedback_text', result_raw), level, s_name), file_name=f"Report_{s_name}_{level}.pdf", use_container_width=True)
             except Exception as e: st.error(f"Grading error: {e}")
@@ -694,23 +690,21 @@ with tab2:
         if is_pro():
             st.download_button("📄 Principal PDF (PRO)", create_principal_pdf(excel_rows, level_b, avg_score, school_name), file_name=f"Principal_{school_name}.pdf", use_container_width=True, key="principal_pdf_1967")
 with tab5:
-    st.markdown("## 📘 Teacher Guide - How to Use TEFLMate v6.73a")
-    st.caption("NEW: Edit OCR + Confidence flag + Dimensions - Left menu fixed")
+    st.markdown("## 📘 Teacher Guide - How to Use TEFLMate v6.73b")
+    st.caption("Left menu fixed - Edit OCR + Confidence flag")
     colA, colB = st.columns(2)
     with colA:
         st.markdown("### 📚 1. Portfolio")
         st.info("Home base. Every grade auto-saves here.")
         st.markdown("### ✍️ 2. Grade Essay")
-        st.markdown("Paste → Name → Level → GRADE → See Grammar/Vocab/Coherence breakdown")
+        st.markdown("Paste → Name → Level → GRADE → See breakdown")
         st.markdown("### 📸 3. Photo/PDF - NEW FLOW")
-        st.success("TAP PHOTO → READ → EDIT TEXT → GRADE. Editing fixes OCR errors = 95% accuracy")
+        st.success("TAP PHOTO → READ → EDIT TEXT → GRADE")
     with colB:
         st.markdown("### ⚡ 4. Batch 50 PRO")
-        st.markdown("Template → 50 students → Upload → Shows confidence per student")
-        st.markdown("### 💡 Pro Tips v6.73a")
-        st.warning("Low confidence? Edit text and re-grade.\n\nA1/A2 generous by design.\n\nDimensions help parent understand.")
-    st.divider()
-    st.markdown("**Workflow:** Photo → Edit → Grade → Confidence High → Portfolio → Parent PDF")
+        st.markdown("Template → 50 students → Upload → Shows confidence")
+        st.markdown("### 💡 Pro Tips v6.73b")
+        st.warning("Left menu: Promo, Paystack, PayPal, Languages all restored")
 with tab6:
     st.markdown("## 🚀 SUPER 7Lang - One Click Market Setup")
     c1,c2,c3=st.columns(3)
@@ -733,4 +727,4 @@ with c_pay2:
     st.link_button("📧 Email proof", "mailto:taahir532@gmail.com?subject=TEFLMate Payment Proof", use_container_width=True)
 with c_pay3:
     st.link_button("💙 Pay with PayPal", "https://paypal.me/TaahirMahomed", use_container_width=True)
-st.caption("TEFLMate v6.73a • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
+st.caption("TEFLMate v6.73b • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
