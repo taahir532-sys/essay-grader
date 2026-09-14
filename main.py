@@ -199,7 +199,7 @@ def login_screen():
     st.markdown("""
     <div class="tefl-header">
         <div style="font-size:22px;font-weight:800;">📚 TEFLMate</div>
-        <div class="tefl-badge">TEFLMate v6.71</div>
+        <div class="tefl-badge">TEFLMate v6.72</div>
     </div>
     """, unsafe_allow_html=True)
     col1, col2 = st.columns([1.2,1])
@@ -207,7 +207,7 @@ def login_screen():
         st.markdown("""
         <div class="landing-hero">
             <h2 style="margin:0;">Grade 40 books in 2 minutes 📸</h2>
-            <p style="color:#555;">Photo-grade handwritten homework • Track progress • Parent reports in 7 languages • Principal PDF</p>
+            <p style="color:#555;">Photo-grade handwritten homework • Track progress • Parent reports in 9 languages • Principal PDF</p>
             <ul>
                 <li>✅ Snap photo → Auto-read → Grade → Save</li>
                 <li>✅ Batch 50 students in one click</li>
@@ -216,9 +216,14 @@ def login_screen():
         </div>
         """, unsafe_allow_html=True)
         st.markdown("#### 🎥 Demo - How it works")
-        st.info("📱 30 sec demo coming soon - Record screen: Take photo of notebook → 1-Click Grade → Parent PDF. Upload to YouTube unlisted and paste link in code later.")
-        st.image("https://via.placeholder.com/600x340/111111/FFFFFF.png?text=Your+Demo+Video+Here+-+Record+Tomorrow", use_container_width=True)
-        st.caption("To add later: YouTube unlisted → replace image with st.video('YOUR_LINK')")
+        DEMO_URL = st.secrets.get("DEMO_VIDEO_URL", "")
+        if DEMO_URL:
+            st.video(DEMO_URL)
+            st.caption("Demo video - live")
+        else:
+            st.info("📱 30 sec demo coming soon - Record: Take photo of notebook → 1-Click Grade → Parent PDF")
+            st.image("https://via.placeholder.com/600x340/111111/FFFFFF.png?text=Your+Demo+Video+Here+-+Add+DEMO_VIDEO_URL+in+Secrets", use_container_width=True)
+            st.caption("To add: Streamlit Secrets → DEMO_VIDEO_URL = 'https://youtu.be/...' → No code change needed")
     with col2:
         st.markdown("#### ⭐ What teachers say")
         st.markdown('<div class="testimonial"><b>Teacher from Durban:</b> "Saves 5hrs a week. Parents love reports!" ⭐⭐⭐⭐⭐</div>', unsafe_allow_html=True)
@@ -484,7 +489,7 @@ with col_title:
             <div style="font-size:22px;font-weight:800;">📚 TEFLMate - Class Portfolio</div>
             <div style="font-size:12px;opacity:0.8;">Track progress • Photo-grade • Parent reports • HOD reports</div>
         </div>
-        <div class="tefl-badge">TEFLMate v6.71</div>
+        <div class="tefl-badge">TEFLMate v6.72</div>
     </div>
     """, unsafe_allow_html=True)
 with col_user:
@@ -734,4 +739,4 @@ with c_pay2:
     st.link_button("📧 Email proof", "mailto:taahir532@gmail.com?subject=TEFLMate Payment Proof&body=Hi Mr Taahir, here is my proof...", use_container_width=True)
 with c_pay3:
     st.link_button("💙 Pay with PayPal", "https://paypal.me/TaahirMahomed", use_container_width=True)
-st.caption("TEFLMate v6.71 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
+st.caption("TEFLMate v6.72 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
