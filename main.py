@@ -199,7 +199,7 @@ def login_screen():
     st.markdown("""
     <div class="tefl-header">
         <div style="font-size:22px;font-weight:800;">📚 TEFLMate</div>
-        <div class="tefl-badge">TEFLMate v6.7</div>
+        <div class="tefl-badge">TEFLMate v6.71</div>
     </div>
     """, unsafe_allow_html=True)
     col1, col2 = st.columns([1.2,1])
@@ -216,11 +216,12 @@ def login_screen():
         </div>
         """, unsafe_allow_html=True)
         st.markdown("#### 🎥 Demo - How it works")
-        st.info("📱 30 sec demo: Take photo of notebook → 1-Click Grade → Parent PDF → Portfolio graph.")
-        st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        st.info("📱 30 sec demo coming soon - Record screen: Take photo of notebook → 1-Click Grade → Parent PDF. Upload to YouTube unlisted and paste link in code later.")
+        st.image("https://via.placeholder.com/600x340/111111/FFFFFF.png?text=Your+Demo+Video+Here+-+Record+Tomorrow", use_container_width=True)
+        st.caption("To add later: YouTube unlisted → replace image with st.video('YOUR_LINK')")
     with col2:
         st.markdown("#### ⭐ What teachers say")
-        st.markdown('<div class="testimonial"><b>Teacher from Durban:</b> "Saves 5hrs a week. Parents love reports in Zulu & English!" ⭐⭐⭐⭐⭐</div>', unsafe_allow_html=True)
+        st.markdown('<div class="testimonial"><b>Teacher from Durban:</b> "Saves 5hrs a week. Parents love reports!" ⭐⭐⭐⭐⭐</div>', unsafe_allow_html=True)
         st.markdown('<div class="testimonial"><b>Teacher from Brazil:</b> "Photo grading is magic. 40 notebooks done while drinking coffee." ⭐⭐⭐⭐⭐</div>', unsafe_allow_html=True)
         st.markdown('<div class="testimonial"><b>HOD from Cape Town:</b> "Principal PDF makes moderation day easy. Best R99 I spent." ⭐⭐⭐⭐⭐</div>', unsafe_allow_html=True)
         st.markdown("#### 📲 Install App")
@@ -483,7 +484,7 @@ with col_title:
             <div style="font-size:22px;font-weight:800;">📚 TEFLMate - Class Portfolio</div>
             <div style="font-size:12px;opacity:0.8;">Track progress • Photo-grade • Parent reports • HOD reports</div>
         </div>
-        <div class="tefl-badge">TEFLMate v6.7</div>
+        <div class="tefl-badge">TEFLMate v6.71</div>
     </div>
     """, unsafe_allow_html=True)
 with col_user:
@@ -561,8 +562,8 @@ with st.sidebar:
         if st.button("✅ Check Payment - Unlock", type="primary", use_container_width=True):
             if verify_all_refs(): st.rerun()
     st.divider()
-    st.markdown("#### 🌎 7 Languages")
-    st.session_state.feedback_lang = st.selectbox("Parent Feedback Language:", ["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese"], index=["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese"].index(st.session_state.feedback_lang))
+    st.markdown("#### 🌎 9 Languages")
+    st.session_state.feedback_lang = st.selectbox("Parent Feedback Language:", ["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese","Zulu","Xhosa"], index=["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese","Zulu","Xhosa"].index(st.session_state.feedback_lang) if st.session_state.feedback_lang in ["English","Spanish","Portuguese","French","Arabic","Hindi","Chinese","Zulu","Xhosa"] else 0)
     st.session_state.grading_standard = st.selectbox("Standard:", ["CEFR","IELTS","TOEFL","US Grade"], index=["CEFR","IELTS","TOEFL","US Grade"].index(st.session_state.grading_standard))
 tab4, tab1, tab3, tab2, tab5, tab6 = st.tabs(["📚 Portfolio","✍️ Grade Essay","📸 Photo/PDF","⚡ Batch 50 PRO","📘 Guide","🚀 SUPER 7Lang"])
 with tab4:
@@ -580,7 +581,6 @@ with tab4:
             st.markdown("#### 👨‍👩‍👧 Parent Share Link (No Login Needed)")
             sel_parent = st.selectbox("Select student to share:", df["student_name"].unique(), key="parent_sel_1967")
             if sel_parent:
-                essay_row = df[df["student_name"]==sel_parent].iloc[0]
                 eid = None
                 for r in rows.data:
                     if r["student_name"]==sel_parent:
@@ -706,7 +706,7 @@ with tab5:
         st.markdown("### ⚡ 4. Batch 50 PRO")
         st.markdown("Download Template → Fill 50 students → Upload → GRADE BATCH 50 → All saved + Principal PDF")
         st.markdown("### 🌎 5. Languages & Standards")
-        st.markdown("Sidebar: Choose feedback language (EN, ES, PT, FR, AR, HI, ZH) + Standard (CEFR, IELTS, TOEFL, US Grade)")
+        st.markdown("Sidebar: Choose feedback language (EN, ES, PT, FR, AR, HI, ZH, ZU, XH) + Standard (CEFR, IELTS, TOEFL, US Grade)")
         st.markdown("### 💡 Pro Tips")
         st.warning("Essays need 30+ words for accurate score.\n\nPhoto best in daylight, flat on desk.\n\nBatch 50 and Excel export need PRO plan.")
     st.divider()
@@ -724,6 +724,7 @@ with tab6:
     with c3:
         if st.button("🇮🇳 India - Hindi + IELTS", use_container_width=True, key="set_in_1967"): st.session_state.feedback_lang="Hindi"; st.session_state.grading_standard="IELTS"; st.success("✅ Hindi + IELTS - India ready"); st.balloons()
         if st.button("🇿🇦 SA - English + CEFR", use_container_width=True, key="set_sa_1967"): st.session_state.feedback_lang="English"; st.session_state.grading_standard="CEFR"; st.success("✅ English + CEFR - SA ready")
+        if st.button("🇿🇦 SA Zulu - Zulu + CEFR", use_container_width=True, key="set_zu_1967"): st.session_state.feedback_lang="Zulu"; st.session_state.grading_standard="CEFR"; st.success("✅ Zulu + CEFR - SA Zulu ready"); st.balloons()
 st.divider()
 st.markdown("### ❤️ Payshap 0658006750 | PayPal: paypal.me/TaahirMahomed | Send proof by WhatsApp or Email and I'll send your code")
 c_pay1, c_pay2, c_pay3 = st.columns(3)
@@ -733,4 +734,4 @@ with c_pay2:
     st.link_button("📧 Email proof", "mailto:taahir532@gmail.com?subject=TEFLMate Payment Proof&body=Hi Mr Taahir, here is my proof...", use_container_width=True)
 with c_pay3:
     st.link_button("💙 Pay with PayPal", "https://paypal.me/TaahirMahomed", use_container_width=True)
-st.caption("TEFLMate v6.7 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
+st.caption("TEFLMate v6.71 • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
