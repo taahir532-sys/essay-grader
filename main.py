@@ -13,9 +13,7 @@ if (hash && hash.includes('access_token')) {
 }
 </script>
 """, height=0)
-# FIXED MANIFEST - valid, was causing sidebar crash
 components.html("""
-<link rel="manifest" href='data:application/json;base64,eyJuYW1lIjoiVEVGTE1hdGUiLCJzaG9ydF9uYW1lIjoiVEVGTE1hdGUiLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzExMSIsInRoZW1lX2NvbG9yIjoiIzExMSJ9'>
 <script>
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -191,7 +189,7 @@ if st.session_state.user is None:
                     except: pass
     except: pass
 def login_screen():
-    st.markdown("""<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate</div><div class="tefl-badge">TEFLMate v6.73b</div></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate</div><div class="tefl-badge">TEFLMate v6.73c</div></div>""", unsafe_allow_html=True)
     col1, col2 = st.columns([1.2,1])
     with col1:
         st.markdown("""<div class="landing-hero"><h2 style="margin:0;">Grade 40 books in 2 minutes 📸</h2><p style="color:#555;">Photo-grade • Track progress • Parent reports in 9 languages • Confidence flag</p><ul><li>✅ Snap photo → Edit OCR → Grade → Save</li><li>✅ Grammar/Vocab/Coherence breakdown</li><li>✅ Parent reports in home language</li></ul></div>""", unsafe_allow_html=True)
@@ -369,22 +367,36 @@ if "reference" in q:
     if unlock_paystack(verify_paystack(q["reference"])): st.query_params.clear(); st.session_state.pay_refs = {}; st.session_state.pay_links = {}
 else:
     if st.session_state.pay_refs: verify_all_refs()
+
+# === FIXED OCR - QWEN DELETED BY GROQ, NOW AUTO FALLBACK ===
 def extract_text_from_image(image_bytes):
     client = get_groq()
     b64 = base64.b64encode(image_bytes).decode('utf-8')
-    try:
-        res = client.chat.completions.create(model="qwen/qwen2.5-vl-32b-instruct", messages=[{"role": "user", "content": [{"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]}], temperature=0)
-        txt = res.choices[0].message.content
-        if "</think>" in txt: txt = txt.split("</think>")[-1].strip()
-        return txt.strip()
-    except Exception as e:
+    models_to_try = [
+        "meta-llama/llama-4-scout-17b-16e-instruct",
+        "meta-llama/llama-4-maverick-17b-128e-instruct",
+        "llama-3.2-90b-vision-preview",
+        "llama-3.2-11b-vision-preview"
+    ]
+    for model_id in models_to_try:
         try:
-            res2 = client.chat.completions.create(model="qwen/qwen3-vl-32b-instruct", messages=[{"role": "user", "content": [{"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]}], temperature=0)
-            txt = res2.choices[0].message.content
+            res = client.chat.completions.create(
+                model=model_id,
+                messages=[{"role": "user", "content": [
+                    {"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                ]}],
+                temperature=0
+            )
+            txt = res.choices[0].message.content or ""
             if "</think>" in txt: txt = txt.split("</think>")[-1].strip()
-            return txt.strip()
-        except Exception as e2:
-            return f"OCR_ERROR: {e} | {e2}"
+            if len(txt.strip()) > 3:
+                return txt.strip()
+        except Exception as e:
+            # Try next model
+            continue
+    return "OCR_ERROR: Vision models temporarily unavailable. Please type text manually or try again in 1 min."
+
 def extract_text_from_pdf(pdf_bytes):
     if not fitz: return "Add PyMuPDF"
     try:
@@ -468,7 +480,7 @@ def save_essay_db(student_name, essay_text, level, score, cefr, feedback):
         return False
 col_title, col_user = st.columns([3,1])
 with col_title:
-    st.markdown("""<div class="tefl-header"><div><div style="font-size:22px;font-weight:800;">📚 TEFLMate - Class Portfolio</div><div style="font-size:12px;opacity:0.8;">Track progress • Photo-grade • 9 languages • Confidence flag</div></div><div class="tefl-badge">TEFLMate v6.73b</div></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="tefl-header"><div><div style="font-size:22px;font-weight:800;">📚 TEFLMate - Class Portfolio</div><div style="font-size:12px;opacity:0.8;">Track progress • Photo-grade • 9 languages • Confidence flag</div></div><div class="tefl-badge">TEFLMate v6.73c</div></div>""", unsafe_allow_html=True)
 with col_user:
     st.info(f"👤 {st.session_state.user.email[:20]} | {get_status()}" if st.session_state.user else "Not logged")
     if st.session_state.user and st.button("Logout", use_container_width=True):
@@ -621,7 +633,7 @@ with tab1:
             except Exception as e: st.error(f"Grading error: {e}")
 with tab3:
     st.markdown("### 📸 Photo & PDF - Handwriting to Text")
-    st.caption("NEW: Edit OCR text before grading = 95% accuracy")
+    st.caption("FIXED: Llama 4 Scout - Qwen removed by Groq, now auto-fallback")
     level_p=st.selectbox("Target Level:",["A1","A2","B1","B2","C1","C2"],key="photo_level_1967")
     st.markdown("#### 📷 Camera First - Big Button Mode")
     camera_pic=st.camera_input("📸 TAP TO TAKE PHOTO - Big Button"); upload_img=st.file_uploader("Or Upload Image",type=["jpg","jpeg","png"],key="img_up_1967"); upload_pdf=st.file_uploader("Upload PDF",type=["pdf"],key="pdf_up_1967")
@@ -637,9 +649,11 @@ with tab3:
             except Exception as e: st.error(str(e))
     if image_bytes:
         if st.button("📸 STEP 1: READ HANDWRITING", type="primary", use_container_width=True, key="read_only_1967"):
-            with st.spinner("Reading..."):
-                extracted=extract_text_from_image(image_bytes); st.session_state.editable_ocr=extracted; st.session_state.last_ocr=extracted; st.success("✅ Read! Edit below if needed")
-        if st.session_state.editable_ocr:
+            with st.spinner("Reading with Llama 4 Scout..."):
+                extracted=extract_text_from_image(image_bytes); st.session_state.editable_ocr=extracted; st.session_state.last_ocr=extracted
+                if "OCR_ERROR" in extracted: st.error(extracted)
+                else: st.success("✅ Read! Edit below if needed")
+        if st.session_state.editable_ocr and "OCR_ERROR" not in st.session_state.editable_ocr:
             st.markdown("#### ✏️ STEP 2: Edit OCR Text (Fix mistakes)")
             edited = st.text_area("Edit text before grading:", value=st.session_state.editable_ocr, height=150, key="editable_ocr_box_1967")
             if st.button("🚀 STEP 3: GRADE EDITED TEXT & SAVE", type="primary", use_container_width=True, key="grade_edited_1967"):
@@ -690,20 +704,20 @@ with tab2:
         if is_pro():
             st.download_button("📄 Principal PDF (PRO)", create_principal_pdf(excel_rows, level_b, avg_score, school_name), file_name=f"Principal_{school_name}.pdf", use_container_width=True, key="principal_pdf_1967")
 with tab5:
-    st.markdown("## 📘 Teacher Guide - How to Use TEFLMate v6.73b")
-    st.caption("Left menu fixed - Edit OCR + Confidence flag")
+    st.markdown("## 📘 Teacher Guide - How to Use TEFLMate v6.73c")
+    st.caption("OCR Fixed - Llama 4 Scout - Left menu restored")
     colA, colB = st.columns(2)
     with colA:
         st.markdown("### 📚 1. Portfolio")
         st.info("Home base. Every grade auto-saves here.")
         st.markdown("### ✍️ 2. Grade Essay")
         st.markdown("Paste → Name → Level → GRADE → See breakdown")
-        st.markdown("### 📸 3. Photo/PDF - NEW FLOW")
-        st.success("TAP PHOTO → READ → EDIT TEXT → GRADE")
+        st.markdown("### 📸 3. Photo/PDF - FIXED")
+        st.success("Groq deleted Qwen, now uses Llama 4 Scout auto-fallback")
     with colB:
         st.markdown("### ⚡ 4. Batch 50 PRO")
         st.markdown("Template → 50 students → Upload → Shows confidence")
-        st.markdown("### 💡 Pro Tips v6.73b")
+        st.markdown("### 💡 Pro Tips v6.73c")
         st.warning("Left menu: Promo, Paystack, PayPal, Languages all restored")
 with tab6:
     st.markdown("## 🚀 SUPER 7Lang - One Click Market Setup")
@@ -727,4 +741,4 @@ with c_pay2:
     st.link_button("📧 Email proof", "mailto:taahir532@gmail.com?subject=TEFLMate Payment Proof", use_container_width=True)
 with c_pay3:
     st.link_button("💙 Pay with PayPal", "https://paypal.me/TaahirMahomed", use_container_width=True)
-st.caption("TEFLMate v6.73b • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
+st.caption("TEFLMate v6.73c • Durban, SA • Built by Mr Taahir Mahomed • Worldwide 🌍")
