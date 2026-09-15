@@ -73,7 +73,31 @@ div[data-testid="stLinkButton"]>a{
     align-items:center!important;justify-content:center!important;
     box-shadow:0 4px 12px rgba(0,0,0,0.15);
 }
-button[data-baseweb="tab"] {font-size:14px; padding:10px 14px; font-weight:600;}
+/* Mobile fix: horizontal scroll tabs */
+div[data-testid="stTabs"] {
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+div[data-testid="stTabs"] div[data-baseweb="tab-list"] {
+    flex-wrap: nowrap!important;
+    overflow-x: auto!important;
+    gap: 4px;
+}
+button[data-baseweb="tab"] {
+    font-size:15px!important;
+    padding:12px 18px!important;
+    font-weight:700!important;
+    color:#111!important;
+    white-space: nowrap!important;
+    flex-shrink: 0!important;
+}
+button[data-baseweb="tab"][aria-selected="true"] {
+    color:#111!important;
+    border-bottom-color: #111!important;
+    font-weight:800!important;
+}
 div[data-testid="stCameraInput"] {border:2px dashed #111; border-radius:16px; padding:8px;}
 .tefl-header {
     background:linear-gradient(135deg,#111 0%,#333 100%);
@@ -89,6 +113,10 @@ div[data-testid="stCameraInput"] {border:2px dashed #111; border-radius:16px; pa
     border-radius:20px; padding:24px; border:1px solid #eee;
 }
 .testimonial {background:white; border-left:4px solid #111; padding:12px 16px; border-radius:8px; margin:8px 0;}
+/* Contrast and bold headings */
+h1, h2, h3, h4 {font-weight:800!important; color:#111!important;}
+.stCaption, [data-testid="stCaptionContainer"] {color:#222!important; font-weight:500!important;}
+p, label {color:#111!important;}
 </style>
 """, unsafe_allow_html=True)
 if "uses" not in st.session_state: st.session_state.uses = 0
@@ -258,13 +286,12 @@ if st.session_state.user is None:
     except: pass
 
 def login_screen():
-    st.markdown("""<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate</div><div class="tefl-badge">TEFLMate v6.8</div></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate</div><div class="tefl-badge">v6.8</div></div>""", unsafe_allow_html=True)
     col1, col2 = st.columns([1.2,1])
     with col1:
-        st.markdown("""<div class="landing-hero"><h2 style="margin:0;">Grade 40 books in 2 minutes 📸</h2><p style="color:#555;">Photo-grade • Track progress • Parent reports in 9 languages • Confidence flag • School OS • Student Self-Submit</p><ul><li>✅ Snap photo → Edit OCR → Grade → Save</li><li>✅ Grammar/Vocab/Coherence breakdown + Common Mistakes Report</li><li>✅ Parent reports in home language + Student link</li><li>✅ NEW: School Dashboard for Principals</li></ul></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="landing-hero"><h2 style="margin:0;">Grade 40 books in 2 minutes 📸</h2><p style="color:#555;">Photo-grade • Track progress • Parent reports • Student Self-Submit</p><ul><li>✅ Snap photo → Edit OCR → Grade → Save</li><li>✅ Grammar/Vocab/Coherence breakdown</li><li>✅ Parent reports in home language + Student link</li></ul></div>""", unsafe_allow_html=True)
         DEMO_URL = st.secrets.get("DEMO_VIDEO_URL", "")
         if DEMO_URL: st.video(DEMO_URL)
-        else: st.info("📱 Demo video - add DEMO_VIDEO_URL in Secrets")
     with col2:
         st.markdown("#### ⭐ What teachers say")
         st.markdown('<div class="testimonial"><b>Teacher from Durban:</b> "Saves 5hrs a week. Parents love reports!" ⭐⭐⭐⭐⭐</div>', unsafe_allow_html=True)
@@ -587,15 +614,11 @@ def save_essay_db(student_name, essay_text, level, score, cefr, feedback):
         return True
     except:
         return False
-col_title, col_user = st.columns([3,1])
-with col_title:
-    st.markdown("""<div class="tefl-header"><div><div style="font-size:22px;font-weight:800;">📚 TEFLMate - Class Portfolio</div><div style="font-size:12px;opacity:0.8;">Track progress • Photo-grade • 9 languages • Confidence flag • School OS v6.8</div></div><div class="tefl-badge">TEFLMate v6.8</div></div>""", unsafe_allow_html=True)
-with col_user:
-    st.info(f"👤 {st.session_state.user.email[:20]} | {get_status()}" if st.session_state.user else "Not logged")
-    if st.session_state.user and st.button("Logout", use_container_width=True):
-        supabase.auth.sign_out(); st.session_state.user=None; st.session_state.teacher_id=None; st.rerun()
+
+# CLEAN HEADER - No text above tabs, status moved to sidebar
 if st.session_state.promo_success:
     st.balloons(); st.success("🎉 Code applied - saved!"); st.session_state.promo_success = False
+
 with st.sidebar:
     st.markdown("### 🔑 Your Plan")
     st.info(get_status())
@@ -603,6 +626,11 @@ with st.sidebar:
         st.success("👑 ADMIN MODE")
         if st.button("🛠 Open Admin Panel", use_container_width=True, type="primary"):
             st.session_state.show_admin = True
+    # User info + logout in sidebar (clean header)
+    if st.session_state.user:
+        st.caption(f"👤 {st.session_state.user.email[:25]}")
+        if st.button("Logout", use_container_width=True):
+            supabase.auth.sign_out(); st.session_state.user=None; st.session_state.teacher_id=None; st.rerun()
     if st.session_state.teacher_id:
         try:
             ref_code = f"TEFL{str(st.session_state.teacher_id)[:6].upper()}"
@@ -627,7 +655,7 @@ with st.sidebar:
             else:
                 st.caption("Invite 3 teachers = 1 month free PRO")
             st.divider()
-            st.markdown("#### 👨🎓 Student Self-Submit (NEW)")
+            st.markdown("#### 👨🎓 Student Self-Submit")
             st.caption("Students upload directly to your portfolio")
             st.code(submit_link)
             st.caption("Share on WhatsApp class group")
@@ -713,17 +741,12 @@ if st.session_state.get("show_admin") and is_admin():
         st.error(str(e))
     if st.button("Close Admin"): st.session_state.show_admin = False; st.rerun()
     st.stop()
-st.markdown("---")
-if is_pro():
-    status_line = f"**Status:** {get_status()} | **Geo:** {st.session_state.geo['symbol']}{st.session_state.geo['weekly']}/{st.session_state.geo['monthly']} local"
-else:
-    rem = FREE_LIMIT - st.session_state.uses
-    status_line = f"**FREE:** {rem} left / {FREE_LIMIT} | Upgrade for unlimited • **Geo:** {st.session_state.geo['symbol']}{st.session_state.geo['weekly']}"
-st.caption(status_line)
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["📚 Portfolio","✍ Grade","📸 Photo","📦 Batch 50","📊 Guide","💎 SUPER","🏫 School OS","👨🏫 HOD"])
+
+# CLEAN TABS - Only 6, no text above
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📚 Portfolio","✍ Grade","📸 Photo","📦 Batch 50","📊 Guide","💎 SUPER"])
 with tab1:
-    st.markdown("### 📚 My Class Portfolio (v6.8)")
-    st.caption("All graded essays auto-saved, with student self-submissions included")
+    st.markdown("### 📚 My Class Portfolio")
+    st.caption("All graded essays auto-saved, including student submissions")
     colf1, colf2 = st.columns(2)
     with colf1:
         search_f = st.text_input("Search student:", placeholder="Type name", key="port_search_1967")
@@ -736,7 +759,7 @@ with tab1:
             if search_f: rows = [r for r in rows if search_f.lower() in r.get("student_name","").lower()]
             if level_f!="All": rows = [r for r in rows if r.get("level")==level_f]
             if not rows:
-                st.info("No essays yet. Grade in ✍ tab or share student link.")
+                st.info("No essays yet. Grade in Grade tab or share student link.")
             else:
                 scores = [r.get("score",0) for r in rows if r.get("score") is not None]
                 avg = sum(scores)/len(scores) if scores else 0
@@ -772,22 +795,22 @@ with tab1:
     except Exception as e:
         st.error(f"Portfolio error: {e}")
 with tab2:
-    st.markdown("### ✍ Grade Essay (with Compression + Hash Cache)")
-    st.caption("10 free grades for new users. AI Risk Detection + Common Mistakes Report + Auto-saves")
+    st.markdown("### ✍ Grade Essay")
+    st.caption("10 free grades for new users. Auto-saves to portfolio")
     s_name = st.text_input("Student Name:", placeholder="e.g. Aisha Mohammed", key="grade_name_1967")
     t_level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="grade_level_1967")
     essay_input = st.text_area("Paste Essay Here:", height=180, placeholder="Paste 30+ words...", key="grade_essay_1967")
     st.divider()
-    st.markdown("#### 📸 Or take photo + Edit OCR (with compressor)")
+    st.markdown("#### 📸 Or take photo + Edit OCR")
     cam = st.camera_input("Take photo of handwriting", key="grade_cam_1967")
     up = st.file_uploader("Upload image", type=["jpg","jpeg","png"], key="grade_up_1967")
     img_bytes = None
     if cam: img_bytes = cam.getvalue()
     elif up: img_bytes = up.getvalue()
     if img_bytes:
-        st.image(img_bytes, caption="Uploaded (will compress to 1024px)", use_container_width=True)
-        if st.button("📖 Read Handwriting (Compressed OCR)", use_container_width=True, key="grade_ocr_btn"):
-            with st.spinner("Compressing + OCR via Qwen..."):
+        st.image(img_bytes, caption="Uploaded", use_container_width=True)
+        if st.button("📖 Read Handwriting", use_container_width=True, key="grade_ocr_btn"):
+            with st.spinner("Reading..."):
                 txt = extract_text_from_image(img_bytes)
                 if "OCR_ERROR" in txt:
                     st.error(txt)
@@ -806,14 +829,14 @@ with tab2:
             if len(txt.strip())>20:
                 essay_input = txt
     st.divider()
-    if st.button("🚀 Grade Essay (Compressed + Cache)", type="primary", use_container_width=True):
+    if st.button("🚀 Grade Essay", type="primary", use_container_width=True):
         if not essay_input or len(essay_input.strip())<10:
             st.warning("Paste 10+ characters or use OCR")
         else:
             if not is_pro() and not is_admin() and st.session_state.uses >= FREE_LIMIT:
                 st.error(f"Free limit {FREE_LIMIT} reached. Upgrade in sidebar")
                 st.stop()
-            with st.spinner("Grading with hash cache..."):
+            with st.spinner("Grading..."):
                 raw_result = grade_with_groq(essay_input, t_level)
                 parsed = parse_dimensions(raw_result)
                 score = int(parsed.get("overall",5)); cefr = parsed.get("cefr", t_level); feedback_text = parsed.get("feedback_text", raw_result)
@@ -837,9 +860,8 @@ with tab2:
                         st.info(f"🔗 Parent Report Link: {plink}")
                         st.code(plink)
 with tab3:
-    st.markdown("### 📸 Photo Grade + Edit (NEW)")
-    st.caption("Snap → Compress → Edit → Grade → Auto-saves to Portfolio")
-    st.info("Uses compressor to avoid blur + cost savings")
+    st.markdown("### 📸 Photo Grade + Edit")
+    st.caption("Snap → Edit → Grade → Auto-saves to Portfolio")
     s_name_p = st.text_input("Student Name (Photo):", key="photo_name_1967")
     t_level_p = st.selectbox("Level:", ["A1","A2","B1","B2","C1","C2"], key="photo_level_1967")
     cam_p = st.camera_input("Take photo", key="photo_cam_1967")
@@ -871,8 +893,8 @@ with tab3:
                     pdfb = create_branded_pdf(edit_p, fb, t_level_p, s_name_p or "Student")
                     st.download_button("Download PDF", pdfb, file_name=f"{s_name_p or 'Student'}_photo.pdf", use_container_width=True)
 with tab4:
-    st.markdown("### 📦 Batch Grade 50 Essays (Class Mode)")
-    st.caption("Paste 50 separated by --- or upload CSV. Uses hash cache for duplicate savings.")
+    st.markdown("### 📦 Batch Grade 50 Essays")
+    st.caption("Paste 50 separated by --- or upload CSV")
     st.info("CSV format: Student Name, Essay Text, Level")
     b_level = st.selectbox("Default Level for Batch:", ["A1","A2","B1","B2","C1","C2"], key="batch_level_1967")
     b_text = st.text_area("Paste essays separated by --- (e.g. Essay1 --- Essay2):", height=180, key="batch_text_1967")
@@ -895,7 +917,7 @@ with tab4:
             essays_list.append((f"Student {i+1}", p, b_level))
     if essays_list:
         st.write(f"Found {len(essays_list)} essays. Will grade max 50.")
-        if st.button(f"🚀 Grade {min(50, len(essays_list))} Essays (uses cache)", type="primary", use_container_width=True):
+        if st.button(f"🚀 Grade {min(50, len(essays_list))} Essays", type="primary", use_container_width=True):
             if not is_pro() and not is_admin():
                 st.error("Batch requires PRO - Upgrade")
                 st.stop()
@@ -923,27 +945,18 @@ with tab4:
         pdf_b = create_principal_pdf(st.session_state.batch_results, b_level, avg_b, "My Class")
         st.download_button("Download Principal PDF for this batch", pdf_b, file_name=f"Principal_Batch_{datetime.now().strftime('%Y%m%d')}.pdf", use_container_width=True)
 with tab5:
-    st.markdown("### 📊 TEFL Grading Guide + Mistakes Report")
+    st.markdown("### 📊 TEFL Grading Guide")
     st.markdown("""
-    **Common mistakes we auto-detect:**
+    **Common mistakes we detect:**
     - A1/A2: Missing verb 'be', no capital 'I', simple spelling
     - B1/B2: Article errors (a/the), tense mixing, run-on sentences
     - C1/C2: Cohesion, register, complex grammar misuse
 
-    **How scoring works (v6.8 - Generous A1/A2):**
+    **How scoring works:**
     - 30+ words communicating idea at A1 = 6/10 minimum
     - Good clear A2 paragraph = 7-8/10
     - Short <15 words or unreadable = 4-5/10
     - B1 and above = Cambridge strict
-
-    **Features in this build:**
-    - Image compressor (1024px, 85% quality) = faster + cheaper
-    - Hash cache: same essay + level + lang = instant from Supabase, no Groq cost
-    - AI Risk flag: flags possible AI text
-    - Confidence flag: low/medium/high
-    - Editable OCR before grading
-    - Student self-submit link (?submit=teacher_id)
-    - Parent report in 9 languages (?parent=essay_id)
     """)
     st.divider()
     st.markdown("#### 💰 Earnings Simulator")
@@ -952,8 +965,8 @@ with tab5:
     earn = studs * price_per
     st.metric("Monthly earning potential", f"{st.session_state.geo['symbol']}{earn}")
 with tab6:
-    st.markdown("### 💎 SUPER Dashboard (Monetization)")
-    st.caption(f"Geo price: {st.session_state.geo['symbol']}{st.session_state.geo['weekly']}/{st.session_state.geo['monthly']}/{st.session_state.geo['yearly']} (local)")
+    st.markdown("### 💎 SUPER Dashboard")
+    st.caption(f"Local pricing: {st.session_state.geo['symbol']}{st.session_state.geo['weekly']}/{st.session_state.geo['monthly']}/{st.session_state.geo['yearly']}")
     if st.session_state.teacher_id:
         try:
             cnt = supabase.table("essays").select("id", count="exact").eq("teacher_id", st.session_state.teacher_id).execute()
@@ -964,55 +977,10 @@ with tab6:
         c1.metric("Total Graded", total_graded)
         c2.metric("Cache Hits Saved", len(st.session_state.grade_cache))
         st.divider()
-        st.markdown("#### Upgrade now - Paystack")
-        st.info("Paystack auto-saves to DB + restores on login")
+        st.markdown("#### Upgrade now")
         st.link_button("Contact Support", "mailto:taahir532@gmail.com")
     else:
         st.warning("Login first")
-with tab7:
-    st.markdown("### 🏫 School OS - Principal Dashboard (NEW in v6.8)")
-    st.caption("For HOD / Principal - whole school overview")
-    school_name_in = st.text_input("School Name:", value="My School", key="school_name_1967")
-    try:
-        if st.session_state.teacher_id:
-            all_rows = supabase.table("essays").select("*").eq("teacher_id", st.session_state.teacher_id).limit(500).execute()
-            rows = all_rows.data if all_rows.data else []
-            if not rows:
-                st.info("No data yet for School OS")
-            else:
-                scores = [r.get("score",0) for r in rows if r.get("score") is not None]
-                avg = sum(scores)/len(scores) if scores else 0
-                level_counts = {}
-                for r in rows:
-                    lvl = r.get("level","B1")
-                    level_counts[lvl] = level_counts.get(lvl,0)+1
-                c1,c2,c3 = st.columns(3)
-                c1.metric("Total Students Graded", len(rows))
-                c2.metric("School Average", f"{avg:.1f}/10")
-                c3.metric("Levels Covered", len(level_counts))
-                st.bar_chart(pd.DataFrame(list(level_counts.items()), columns=["Level","Count"]).set_index("Level"))
-                st.divider()
-                excel_rows = [{"Student Name": r.get("student_name",""), "Level": r.get("level",""), "Score /10": r.get("score",0), "CEFR": r.get("cefr","")} for r in rows]
-                pdf_prin = create_principal_pdf(excel_rows, "All Levels", avg, school_name_in)
-                st.download_button("📥 Download Principal PDF (Whole School)", pdf_prin, file_name=f"Principal_{school_name_in}_{datetime.now().strftime('%Y%m%d')}.pdf", mime="application/pdf", use_container_width=True, type="primary")
-    except Exception as e:
-        st.error(f"School OS error: {e}")
-with tab8:
-    st.markdown("### 👨🏫 HOD Moderation View")
-    st.caption("Same as Principal but with feedback quality check")
-    try:
-        if st.session_state.teacher_id:
-            q = supabase.table("essays").select("*").eq("teacher_id", st.session_state.teacher_id).order("created_at", desc=True).limit(100).execute()
-            rows = q.data if q.data else []
-            if rows:
-                for r in rows[:10]:
-                    with st.expander(f"{r.get('student_name','')} - {r.get('score','')}/10 {r.get('cefr','')}"):
-                        st.write(f"**Essay:** {str(r.get('essay_text',''))[:500]}")
-                        st.write(f"**Feedback:** {str(r.get('feedback',''))[:800]}")
-                        st.caption(f"Date: {str(r.get('created_at',''))[:10]} | Confidence check needed if low")
-            else:
-                st.info("No essays")
-    except Exception as e:
-        st.error(str(e))
+
 st.markdown("---")
-st.caption("TEFLMate v6.8 FULL - Compressor + Hash Cache + Confidence + 9 Langs + AI Risk + Student Submit + School OS | taahir532@gmail.com | Made in Durban 🇿🇦")
+st.markdown("<div style='text-align:center; padding:12px; font-weight:600; color:#555;'>© 2026 TEFLMate | Made in Durban, ZA</div>", unsafe_allow_html=True)
