@@ -59,19 +59,49 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
 html, body, [class*="css"] {font-family:'Inter', sans-serif;}
 .main > div {padding-top:10px;}
+/* GLOBAL FIX - FORCE WHITE TEXT ON ALL BLACK BUTTONS */
 .stButton>button {
-    background:#111!important;color:white!important;
+    background:#111!important;
+    color:white!important;
+    -webkit-text-fill-color:white!important;
+    text-fill-color:white!important;
     border-radius:12px!important;height:56px!important;
     font-weight:800!important;font-size:16px!important;
     width:100%;border:1px solid #111!important;
     box-shadow:0 4px 12px rgba(0,0,0,0.15);
 }
+.stButton>button * {
+    color:white!important;
+    -webkit-text-fill-color:white!important;
+    text-fill-color:white!important;
+}
+.stButton>button p,.stButton>button div,.stButton>button span {
+    color:white!important;
+    -webkit-text-fill-color:white!important;
+}
 div[data-testid="stLinkButton"]>a{
-    background:#111!important;color:white!important;
+    background:#111!important;
+    color:white!important;
+    -webkit-text-fill-color:white!important;
+    text-fill-color:white!important;
     border-radius:12px!important;height:56px!important;
     font-weight:800!important;display:flex!important;
     align-items:center!important;justify-content:center!important;
     box-shadow:0 4px 12px rgba(0,0,0,0.15);
+}
+div[data-testid="stLinkButton"]>a *{
+    color:white!important;
+    -webkit-text-fill-color:white!important;
+    text-fill-color:white!important;
+}
+div[data-testid="stSidebar"].stButton>button,
+div[data-testid="stSidebar"].stButton>button * {
+    color:white!important;
+    -webkit-text-fill-color:white!important;
+    text-fill-color:white!important;
+    white-space:normal!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
 }
 /* Mobile fix: horizontal scroll tabs */
 div[data-testid="stTabs"] {
