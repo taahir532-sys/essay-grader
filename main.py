@@ -680,22 +680,20 @@ with st.sidebar:
                 else:
                     st.error("Invalid code")
     st.markdown("### 💳 Paystack Upgrade")
-    cols = st.columns(4)
-    for i, plan in enumerate(["WEEK49","MONTH99","YEAR799","ONCE10"]):
-        with cols[i]:
-            amt = {"WEEK49":4900,"MONTH99":9900,"YEAR799":79900,"ONCE10":1000}[plan]
-            label = {"WEEK49":"Weekly R49","MONTH99":"Monthly R99","YEAR799":"Yearly R799","ONCE10":"Once R10"}[plan]
-            if st.button(label, key=f"pay_{plan}", use_container_width=True):
-                if not st.session_state.user:
-                    st.warning("Login first")
+    for plan in ["WEEK49","MONTH99","YEAR799","ONCE10"]:
+        amt = {"WEEK49":4900,"MONTH99":9900,"YEAR799":79900,"ONCE10":1000}[plan]
+        label = {"WEEK49":"Weekly R49","MONTH99":"Monthly R99","YEAR799":"Yearly R799","ONCE10":"Once R10"}[plan]
+        if st.button(label, key=f"pay_{plan}", use_container_width=True):
+            if not st.session_state.user:
+                st.warning("Login first")
+            else:
+                res = init_paystack(st.session_state.user.email, amt, plan)
+                if res.get("status"):
+                    st.session_state.pay_links[plan] = res["data"]["authorization_url"]
+                    st.session_state.pay_refs[plan] = res["data"]["reference"]
+                    st.session_state.pay_links_time = datetime.now()
                 else:
-                    res = init_paystack(st.session_state.user.email, amt, plan)
-                    if res.get("status"):
-                        st.session_state.pay_links[plan] = res["data"]["authorization_url"]
-                        st.session_state.pay_refs[plan] = res["data"]["reference"]
-                        st.session_state.pay_links_time = datetime.now()
-                    else:
-                        st.error(res.get("message","Failed"))
+                    st.error(res.get("message","Failed"))
     if st.session_state.pay_links_time and (datetime.now()-st.session_state.pay_links_time).total_seconds() > 3600:
         st.session_state.pay_links = {}; st.session_state.pay_refs = {}; st.session_state.pay_links_time = None
     for plan, link in st.session_state.pay_links.items():
