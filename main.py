@@ -258,7 +258,7 @@ if st.session_state.user is None:
     except: pass
 
 def login_screen():
-    st.markdown("""<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate</div><div class="tefl-badge">TEFLMate v6.8</div></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate</div><div class="tefl-badge">TEFLMate v6.91</div></div>""", unsafe_allow_html=True)
     col1, col2 = st.columns([1.2,1])
     with col1:
         st.markdown("""<div class="landing-hero"><h2 style="margin:0;">Grade 40 books in 2 minutes 📸</h2><p style="color:#555;">Photo-grade • Track progress • Parent reports in 9 languages • Confidence flag • School OS • Student Self-Submit</p><ul><li>✅ Snap photo → Edit OCR → Grade → Save</li><li>✅ Grammar/Vocab/Coherence breakdown + Common Mistakes Report</li><li>✅ Parent reports in home language + Student link</li><li>✅ NEW: School Dashboard for Principals</li></ul></div>""", unsafe_allow_html=True)
@@ -589,7 +589,7 @@ def save_essay_db(student_name, essay_text, level, score, cefr, feedback):
         return False
 col_title, col_user = st.columns([3,1])
 with col_title:
-    st.markdown("""<div class="tefl-header"><div><div style="font-size:22px;font-weight:800;">📚 TEFLMate - Class Portfolio</div><div style="font-size:12px;opacity:0.8;">Track progress • Photo-grade • 9 languages • Confidence flag • School OS v6.8</div></div><div class="tefl-badge">TEFLMate v6.8</div></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="tefl-header"><div><div style="font-size:22px;font-weight:800;">📚 TEFLMate - Class Portfolio</div><div style="font-size:12px;opacity:0.8;">Track progress • Photo-grade • 9 languages • Confidence flag • School OS v6.91</div></div><div class="tefl-badge">TEFLMate v6.91</div></div>""", unsafe_allow_html=True)
 with col_user:
     st.info(f"👤 {st.session_state.user.email[:20]} | {get_status()}" if st.session_state.user else "Not logged")
     if st.session_state.user and st.button("Logout", use_container_width=True):
@@ -722,7 +722,7 @@ else:
 st.caption(status_line)
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["📚 Portfolio","✍ Grade","📸 Photo","📦 Batch 50","📊 Guide","💎 SUPER","🏫 School OS","👨🏫 HOD"])
 with tab1:
-    st.markdown("### 📚 My Class Portfolio (v6.8)")
+    st.markdown("### 📚 My Class Portfolio (v6.91)")
     st.caption("All graded essays auto-saved, with student self-submissions included")
     colf1, colf2 = st.columns(2)
     with colf1:
@@ -930,7 +930,7 @@ with tab5:
     - B1/B2: Article errors (a/the), tense mixing, run-on sentences
     - C1/C2: Cohesion, register, complex grammar misuse
 
-    **How scoring works (v6.8 - Generous A1/A2):**
+    **How scoring works (v6.91 - Generous A1/A2):**
     - 30+ words communicating idea at A1 = 6/10 minimum
     - Good clear A2 paragraph = 7-8/10
     - Short <15 words or unreadable = 4-5/10
@@ -970,7 +970,7 @@ with tab6:
     else:
         st.warning("Login first")
 with tab7:
-    st.markdown("### 🏫 School OS - Principal Dashboard (NEW in v6.8)")
+    st.markdown("### 🏫 School OS - Principal Dashboard (NEW in v6.91)")
     st.caption("For HOD / Principal - whole school overview")
     school_name_in = st.text_input("School Name:", value="My School", key="school_name_1967")
     try:
@@ -1015,4 +1015,4 @@ with tab8:
     except Exception as e:
         st.error(str(e))
 st.markdown("---")
-st.caption("TEFLMate v6.8 FULL - Compressor + Hash Cache + Confidence + 9 Langs + AI Risk + Student Submit + School OS | taahir532@gmail.com | Made in Durban 🇿🇦")
+st.caption("TEFLMate v6.91 FULL - Compressor + Hash Cache + Confidence + 9 Langs + AI Risk + Student Submit + School OS | taahir532@gmail.com | Made in Durban 🇿🇦")
