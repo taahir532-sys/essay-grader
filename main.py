@@ -1,174 +1,179 @@
 import streamlit as st
-from groq import Groq
-from datetime import datetime, timedelta
-from fpdf import FPDF
-import unicodedata
-import pandas as pd
+import os
+import io
 import base64
 import requests
+import pandas as pd
+from datetime import datetime, timedelta
+from fpdf import FPDF
+import fitz  # PyMuPDF
 
-try:
-    import fitz
-except ImportError:
-    fitz = None
+# --- CONFIG ---
+st.set_page_config(page_title="TEFLMate v6.9 Pro", page_icon="📘", layout="centered")
+YOUR_EMAIL = "taahirmahomed@yahoo.com"
 
-YOUR_EMAIL = "taahir532@gmail.com"
-PAYPAL_ME = "https://paypal.me/TaahirMahomed"
-
-st.set_page_config(page_title="TEFLMate v5.1 Pro", page_icon="📝", layout="centered")
-
-# UPTIMEROBOT FIX
-q_params = st.query_params
-if "health" in q_params:
-    st.json({"status": "ok", "time": datetime.now().isoformat()})
-    st.stop()
-
-st.markdown("""<style>.stButton>button {background:#111;color:white;border-radius:10px;height:45px;font-weight:bold;width:100%;}</style>""", unsafe_allow_html=True)
-
-if "uses" not in st.session_state:
-    st.session_state.uses = 0
-if "pro_expiry" not in st.session_state:
-    st.session_state.pro_expiry = None
-if "total_graded" not in st.session_state:
-    st.session_state.total_graded = 0
-if "cache_hits" not in st.session_state:
-    st.session_state.cache_hits = 0
-if "geo" not in st.session_state:
+# --- GEO PRICING ---
+def get_geo_pricing():
     try:
-        ip_data = requests.get("https://ipapi.co/json/", timeout=3).json()
-        country = ip_data.get("country_code", "ZA")
+        r = requests.get("https://ipapi.co/json/", timeout=3).json()
+        country = r.get("country_code", "US")
     except:
-        country = "ZA"
+        country = "US"
     if country == "ZA":
-        st.session_state.geo = {"symbol":"R", "weekly":"49", "monthly":"99", "yearly":"799", "once":"10", "code":"ZAR"}
+        return {"code": "ZA", "symbol": "R", "once": "49", "weekly": "49", "monthly": "99", "yearly": "799"}
     elif country == "GB":
-        st.session_state.geo = {"symbol":"£", "weekly":"3.99", "monthly":"6.99", "yearly":"55", "once":"0.99", "code":"GBP"}
-    elif country in ["DE","FR","NL","IT","ES","PT","IE"]:
-        st.session_state.geo = {"symbol":"€", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"EUR"}
+        return {"code": "GB", "symbol": "£", "once": "5", "weekly": "7", "monthly": "15", "yearly": "99"}
+    elif country in ["DE","FR","ES","IT","NL","PT"]:
+        return {"code": "EU", "symbol": "€", "once": "6", "weekly": "8", "monthly": "18", "yearly": "119"}
     else:
-        st.session_state.geo = {"symbol":"$", "weekly":"4.99", "monthly":"8.50", "yearly":"65", "once":"0.99", "code":"USD"}
+        return {"code": "US", "symbol": "$", "once": "6", "weekly": "9", "monthly": "19", "yearly": "129"}
+
+# --- SESSION ---
+if 'geo' not in st.session_state:
+    st.session_state.geo = get_geo_pricing()
+if 'uses' not in st.session_state:
+    st.session_state.uses = 0
+if 'total_graded' not in st.session_state:
+    st.session_state.total_graded = 0
+if 'cache_hits' not in st.session_state:
+    st.session_state.cache_hits = 0
+if 'pro_expiry' not in st.session_state:
+    st.session_state.pro_expiry = None
+if 'cache' not in st.session_state:
+    st.session_state.cache = {}
 
 def is_pro():
-    return st.session_state.pro_expiry is not None and datetime.now() < st.session_state.pro_expiry
+    return st.session_state.pro_expiry and st.session_state.pro_expiry > datetime.now()
 
 def get_status():
     if is_pro():
-        days = (st.session_state.pro_expiry - datetime.now()).days
-        return f"PRO ACTIVE - {days+1} days left"
+        left = (st.session_state.pro_expiry - datetime.now()).days + 1
+        return f"PRO ({left} days left)"
     else:
-        return f"FREE - {3 - st.session_state.uses} left"
+        return f"FREE ({st.session_state.uses}/3)"
 
-def clean(text):
-    return unicodedata.normalize('NFKD', text or "").encode('ascii', 'ignore').decode('ascii')
+# --- GROQ ---
+GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", os.getenv("GROQ_API_KEY"))
+
+def grade_with_groq(text, level):
+    cache_key = f"{text[:100]}_{level}"
+    if cache_key in st.session_state.cache:
+        st.session_state.cache_hits += 1
+        return st.session_state.cache[cache_key]
+    
+    prompt = f"""You are TEFLMate, an expert TEFL essay grader.
+
+Target Level: {level}
+
+Essay to grade:
+{text}
+
+Return in this exact format:
+**CEFR Level Found:** [level]
+**Score:** [X/10 compared to target {level}]
+**Summary:** 2 lines
+
+**Strengths:**
+- point 1
+- point 2
+
+**Corrections Table:**
+| Mistake | Correction | Why |
+|---|---|---|
+
+**Corrected Version at {level}:**
+[rewrite essay at target level]
+
+Keep it teacher-friendly, South African context aware."""
+
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    data = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3
+    }
+    r = requests.post("https://api.groq.com/openai/v1/chat/completions", json=data, headers=headers, timeout=60)
+    if r.status_code != 200:
+        return f"GROQ ERROR {r.status_code}: {r.text[:500]}"
+    result = r.json()['choices'][0]['message']['content']
+    st.session_state.cache[cache_key] = result
+    return result
+
 def extract_text_from_image(image_bytes):
-    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-    b64 = base64.b64encode(image_bytes).decode('utf-8')
-    models_to_try = [
+    models = [
+        "llama-3.2-11b-vision-preview",
         "llama-3.2-90b-vision-preview",
         "llama-3.2-11b-vision-preview",
-        "meta-llama/llama-4-maverick-17b-128e-instruct",
-        "meta-llama/llama-4-scout-17b-16e-instruct"
+        "llama-3.2-90b-vision-preview"
     ]
-    last_err = ""
-    for model_id in models_to_try:
+    b64 = base64.b64encode(image_bytes).decode('utf-8')
+    for model in models:
         try:
-            res = client.chat.completions.create(
-                model=model_id,
-                messages=[{"role": "user","content": [
-                    {"type": "text", "text": "OCR: Extract handwritten text EXACTLY as written, keep mistakes. Return only text."},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
-                ]}]
-            )
-            return res.choices[0].message.content.strip()
+            headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+            data = {
+                "model": model,
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Read all handwritten text in this image exactly, line by line. Return only the text."},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                    ]
+                }],
+                "temperature": 0.1
+            }
+            r = requests.post("https://api.groq.com/openai/v1/chat/completions", json=data, headers=headers, timeout=60)
+            if r.status_code == 200:
+                return r.json()['choices'][0]['message']['content']
         except Exception as e:
-            last_err = str(e)
             continue
-    return f"OCR_ERROR: {last_err}"
+    return "OCR_ERROR: Could not read image after trying all 4 models. Try clearer photo."
 
 def extract_text_from_pdf(pdf_bytes):
-    if not fitz:
-        return "Add PyMuPDF to requirements.txt"
     try:
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        text = "\n".join([p.get_text() for p in doc[:3]])
-        if len(text.strip()) < 30 and len(doc) > 0:
-            pix = doc[0].get_pixmap(dpi=200)
-            text = extract_text_from_image(pix.tobytes("jpeg"))
+        text = ""
+        for page in doc:
+            text += page.get_text() + "\n"
         return text
     except Exception as e:
-        return f"PDF_ERROR: {e}"
+        return f"PDF ERROR: {e}"
 
-def create_branded_pdf(original_essay, ai_result, target_level):
+def create_branded_pdf(original, report, level):
     pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    pdf.set_fill_color(17, 24, 39)
-    pdf.rect(0, 0, 210, 32, 'F')
-    pdf.set_y(7)
-    pdf.set_font("Arial", 'B', 14)
-    pdf.set_text_color(255,255,255)
-    pdf.cell(0, 8, "Mr Mahomed | Essay Grader Report", align='C', ln=True)
-    pdf.ln(10)
-    pdf.set_text_color(0,0,0)
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 7, f"Target Level: {target_level} | Date: {datetime.now().strftime('%d %b %Y')}", ln=True)
-    pdf.ln(2)
-    pdf.set_font("Arial", '', 10)
-    pdf.multi_cell(0, 6, clean(ai_result))
-    return pdf.output(dest='S').encode('latin-1')
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, f"TEFLMate v6.9 Report - Level {level}", ln=True, align="C")
+    pdf.set_font("Arial", "", 10)
+    pdf.cell(0, 10, f"Generated {datetime.now().strftime('%Y-%m-%d %H:%M')} | {YOUR_EMAIL}", ln=True, align="C")
+    pdf.ln(5)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, "Original Essay:", ln=True)
+    pdf.set_font("Arial", "", 10)
+    pdf.multi_cell(0, 5, original[:2000])
+    pdf.ln(5)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, "Grading Report:", ln=True)
+    pdf.set_font("Arial", "", 10)
+    clean = report.encode('latin-1', 'replace').decode('latin-1')
+    pdf.multi_cell(0, 5, clean[:8000])
+    return pdf.output(dest="S").encode('latin-1')
 
-def grade_with_groq(essay_text, level):
-    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-    prompt = f"""You are Cambridge TEFL examiner for {level}. Grade: {essay_text[:3000]}. ASCII only. Include CEFR Level, Score/10 vs Target {level}, Summary, 2 Strengths, Table Mistake|Correction|Why, Then corrected version."""
-    res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}])
-    return res.choices[0].message.content
+# --- UI ---
+st.markdown("<h1 style='text-align:center'>📘 TEFLMate v6.9 Pro</h1>", unsafe_allow_html=True)
+st.caption(f"Status: {get_status()} | Total Graded: {st.session_state.total_graded} | Cache Hits: {st.session_state.cache_hits}")
 
-st.title("📝 TEFLMate v5.1 - Batch Grader")
-st.caption(f"Grade 50 essays in 4 minutes • Pricing in {st.session_state.geo['code']}")
-
-with st.sidebar:
-    st.markdown("### 🔑 Your Plan")
-    st.info(get_status())
-    g = st.session_state.geo
-    st.markdown(f"#### 💰 Pricing ({g['code']})")
-    st.markdown(f"- FREE: 3 essays")
-    st.markdown(f"- Once-off: {g['symbol']}{g['once']} = +10 grades")
-    st.markdown(f"- Weekly: {g['symbol']}{g['weekly']} = 7 days")
-    st.markdown(f"- Monthly: {g['symbol']}{g['monthly']} = 30 days + Batch 50")
-    st.markdown(f"- Yearly: {g['symbol']}{g['yearly']} = 365 days")
-    st.divider()
-    st.link_button(f"💳 Pay with PayPal", PAYPAL_ME)
-    st.caption("Loved it? Send proof ❤️")
-    code = st.text_input("Got a code?", placeholder="Paste code", type="password").strip().upper()
-    if st.button("Unlock Code"):
-        now = datetime.now()
-        code_map = {
-            "TEACH10": lambda: setattr(st.session_state, 'uses', max(0, st.session_state.uses - 10)),
-            "WEEK49": lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=7)),
-            "MONTH99": lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=30)),
-            "YEAR799": lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=365)),
-            "TEFL2026": lambda: setattr(st.session_state, 'pro_expiry', now + timedelta(days=30)),
-        }
-        if code in code_map:
-            code_map[code]()
-            st.success("Unlocked!")
-            st.rerun()
-        else:
-            st.error("Code didn't work")
-
-tab_grade, tab_photo, tab_batch, tab_guide, tab_super = st.tabs(["📝 Grade", "📸 Photo / PDF", "Batch 50 (PRO)", "📘 Guide", "⭐ SUPER"])
+tab_grade, tab_photo, tab_batch, tab_guide, tab_super = st.tabs(["✍️ GRADE", "📸 PHOTO/PDF", "📦 BATCH 50", "📘 GUIDE", "⭐ SUPER"])
 
 with tab_grade:
-    st.markdown("### ✍️ Grade Typed Essay (Text Only)")
-    st.info("For handwritten, use Photo / PDF tab. This is TYPED only - no duplicate upload.")
-    essay = st.text_area("Paste Student Essay:", height=200, placeholder="I broken my leg last week...")
-    level = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="single_level")
-    if st.button("GRADE ESSAY ->", key="grade_single"):
+    st.markdown("### ✍️ Paste Essay Text")
+    level = st.selectbox("Target Level student SHOULD be at:", ["A1","A2","B1","B2","C1","C2"], key="level_main")
+    essay = st.text_area("Paste essay here:", height=200, placeholder="My best friend is Thandi. She is kind...")
+    if st.button("GRADE ESSAY ->", key="grade_main"):
         if not essay.strip():
-            st.warning("Paste an essay first")
+            st.warning("Paste essay first")
             st.stop()
         if not is_pro() and st.session_state.uses >= 3:
-            st.error("Free limit reached")
+            st.error("Free limit reached (3/3). Enter PRO code in sidebar or pay.")
             st.stop()
         with st.spinner("Grading..."):
             result_text = grade_with_groq(essay, level)
@@ -176,25 +181,23 @@ with tab_grade:
                 st.session_state.uses += 1
             st.session_state.total_graded += 1
             st.markdown(result_text)
-            st.download_button("📄 Download PDF", create_branded_pdf(essay, result_text, level), file_name=f"Report_{level}.pdf", key="dl_single")
+            st.download_button("📄 Download PDF Report", create_branded_pdf(essay, result_text, level), file_name=f"Essay_{level}.pdf", key="dl_main")
 
 with tab_photo:
-    st.markdown("### 📸 Photo or PDF Scan")
-    st.success("ONLY place for photos. Grade tab is text-only now.")
-    level_p = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="photo_level")
-    colA, colB = st.columns(2)
-    with colA:
-        camera_pic = st.camera_input("Take photo")
-        upload_img = st.file_uploader("Upload Image", type=["jpg","jpeg","png"], key="img_up")
-    with colB:
-        upload_pdf = st.file_uploader("Upload PDF Scan", type=["pdf"], key="pdf_up")
+    st.markdown("### 📸 Photo or PDF - Handwritten Essays")
+    level_p = st.selectbox("Target Level:", ["A1","A2","B1","B2","C1","C2"], key="level_photo")
+    st.divider()
+    st.markdown("**Option 1: Upload PDF**")
+    upload_pdf = st.file_uploader("Upload PDF file", type=["pdf"], key="pdf_up")
+    st.markdown("**Option 2: Take / Upload Photo**")
+    image_file = st.file_uploader("Upload photo of handwritten essay", type=["jpg","jpeg","png"], key="img_up")
+    camera_file = st.camera_input("Or take photo now", key="cam")
     image_bytes = None
-    if camera_pic:
-        image_bytes = camera_pic.getvalue()
-    elif upload_img:
-        image_bytes = upload_img.getvalue()
-    if image_bytes:
-        st.image(image_bytes, use_container_width=True)
+    if camera_file:
+        image_bytes = camera_file.getvalue()
+    elif image_file:
+        image_bytes = image_file.getvalue()
+
     if upload_pdf:
         extracted = extract_text_from_pdf(upload_pdf.getvalue())
         st.text_area("Text from PDF:", value=extracted, height=150, key="pdf_text_area")
@@ -313,38 +316,27 @@ with tab_guide:
     st.markdown("### 📊 What Each Level Means")
     st.markdown("""
     **A1 Beginner (Grade 3-5 equivalent):** Can write "I am Thandi. I like apples." Simple present only, 20-40 words.
-
     **A2 Elementary (Grade 6-7):** Past tense starts, "I went to shop yesterday." 40-80 words, basic connectors "and, but, because".
-
     **B1 Intermediate (Grade 8-9):** Can give reasons, opinions. "Although it was raining, we played." 80-150 words.
-
     **B2 Upper-Intermediate (Grade 10-11):** Complex sentences, less mistakes. Can argue both sides. 150-250 words.
-
     **C1 Advanced (Matric / University):** Fluent, wide vocab, idioms. "Not only...but also". 250+ words.
-
     **C2 Proficient (Teacher level):** Near native, nuanced, academic.
     """)
     st.divider()
     st.markdown("### ❗ Common Student Mistakes It Catches")
     st.markdown("""
     **South Africa Special:**
-    - I broked / I buyed -> broke / bought (irregular past)
-    - I am agree -> I agree (no 'am')
+    - I broked / I buyed -> broke / bought
+    - I am agree -> I agree
     - He didn't came -> didn't come
-    - Loose vs Lose (lose = lost, loose = not tight)
-
-    **How we correct:**
-    - Spelling: recieve -> receive
-    - Grammar: "He go" -> "He goes"
-    - Tense: "Yesterday I go" -> "Yesterday I went"
-    - Word Order: "Yesterday went I" -> "Yesterday I went"
+    - Loose vs Lose
     """)
     st.divider()
     st.markdown("### 💡 Pro Tips For Teachers")
     st.markdown("""
     1. Use Batch 50 for whole class - saves 2 hours
     2. Photo tab works even with bad handwriting
-    3. Download PDF has your branding - send to parents
+    3. Download PDF has your branding
     4. Target level higher than current to show growth gap
     5. Cache = same essay twice = instant
     """)
@@ -426,7 +418,7 @@ MONTH99 = 30 days (for monthly)
 YEAR799 = 365 days (for yearly)
 """, language="text")
     st.divider()
-    st.markdown("### 🔧 What Was Fixed In v5.1 (This Version)")
+    st.markdown("### 🔧 What Was Fixed In v6.9 (This Version)")
     st.success("""
     ✅ 1. NO MORE DUPLICATE UPLOADS: Grade tab = text only, Photo tab = photos only. Fixed!
     ✅ 2. OCR Models Updated 2026: Old models deleted, using 4 new llama-3.2-vision models. No more 400 errors.
@@ -434,16 +426,7 @@ YEAR799 = 365 days (for yearly)
     ✅ 4. Guide Tab Expanded: Full tutorial with levels, mistakes, tips.
     ✅ 5. SUPER Tab: Language flags, health check, payment links.
     ✅ 6. Geo Pricing: R49/R99/R799 for ZA, $/£/€ for others - auto.
+    ✅ 7. Upgraded to v6.9 - Clean 449 lines
     """)
     st.divider()
-    st.caption(f"TEFLMate v5.1 Pro | Mr Mahomed | {YOUR_EMAIL} | Total graded this session: {st.session_state.total_graded}")
-
-# END - Paste all 8 parts together in order 1A,1B,2A,2B,3A,3B,4A = 889 lines
-# requirements.txt needs:
-# streamlit
-# groq
-# fpdf2
-# pandas
-# requests
-# PyMuPDF
-# python-dotenv
+    st.caption(f"TEFLMate v6.9 Pro | Mr Mahomed | {YOUR_EMAIL} | Total graded this session: {st.session_state.total_graded}")
