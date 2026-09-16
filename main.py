@@ -497,8 +497,8 @@ def create_cv_pdf(cv_data):
     pdf.set_font("Arial",'',11); pdf.cell(0,6,clean(cv_data.get('email','')+" | "+cv_data.get('phone','')),align='C',ln=True); pdf.ln(15)
     pdf.set_text_color(0,0,0)
     for section, content in [("Profile", cv_data.get('profile','')), ("Experience", cv_data.get('experience','')), ("Education", cv_data.get('education','')), ("Skills", cv_data.get('skills','')), ("Certifications", cv_data.get('certs',''))]:
-        if content:
-            pdf.set_font("Arial",'B',12); pdf.set_fill_color(240,240,240); pdf.cell(0,8,section,ln=True,fill=True); pdf.ln(2)
+        if content:            
+pdf.set_font("Arial",'B',12); pdf.set_fill_color(240,240,240); pdf.cell(0,8,section,ln=True,fill=True); pdf.ln(2)
             pdf.set_font("Arial",'',10); pdf.multi_cell(0,6,clean(content)); pdf.ln(4)
     out = pdf.output(dest='S'); return out.encode('latin-1') if isinstance(out, str) else bytes(out)
 
@@ -610,6 +610,9 @@ def df_to_excel_bytes_safe(df, sheet_name="Sheet1"):
 if st.session_state.promo_success:
     st.balloons(); st.success("🎉 Code applied - saved to DB!"); st.session_state.promo_success = False
 
+if "payshap_choice" not in st.session_state: st.session_state.payshap_choice = None
+if "paypal_choice" not in st.session_state: st.session_state.paypal_choice = None
+
 with st.sidebar:
     st.markdown("### 🔑 Your Plan")
     st.info(f"{'✅ '+st.session_state.active_plan if is_pro() else f'FREE - {FREE_LIMIT - st.session_state.uses}/{FREE_LIMIT} left'}")
@@ -648,12 +651,14 @@ with st.sidebar:
             else:
                 res = init_paystack(st.session_state.user.email, 4900, "WEEK49")
                 if res.get("status"): st.session_state.pay_links["WEEK49"]=res["data"]["authorization_url"]; st.session_state.pay_refs["WEEK49"]=res["data"]["reference"]; st.session_state.pay_links_time=datetime.now()
+                else: st.error(f"Paystack error: {res.get('message')}")
     with c2:
         if st.button(f"R{st.session_state.geo['monthly']} Monthly", key="pay_month_v691", use_container_width=True, type="primary"):
             if not st.session_state.user: st.warning("Login first")
             else:
                 res = init_paystack(st.session_state.user.email, 9900, "MONTH99")
                 if res.get("status"): st.session_state.pay_links["MONTH99"]=res["data"]["authorization_url"]; st.session_state.pay_refs["MONTH99"]=res["data"]["reference"]; st.session_state.pay_links_time=datetime.now()
+                else: st.error(f"Paystack error: {res.get('message')}")
     c3,c4 = st.columns(2)
     with c3:
         if st.button(f"R{st.session_state.geo['yearly']} Yearly", key="pay_year_v691", use_container_width=True):
@@ -661,33 +666,57 @@ with st.sidebar:
             else:
                 res = init_paystack(st.session_state.user.email, 79900, "YEAR799")
                 if res.get("status"): st.session_state.pay_links["YEAR799"]=res["data"]["authorization_url"]; st.session_state.pay_refs["YEAR799"]=res["data"]["reference"]; st.session_state.pay_links_time=datetime.now()
+                else: st.error(f"Paystack error: {res.get('message')}")
     with c4:
         if st.button(f"R{st.session_state.geo['once']} Once +10", key="pay_once_v691", use_container_width=True):
             if not st.session_state.user: st.warning("Login first")
             else:
                 res = init_paystack(st.session_state.user.email, 1000, "ONCE10")
                 if res.get("status"): st.session_state.pay_links["ONCE10"]=res["data"]["authorization_url"]; st.session_state.pay_refs["ONCE10"]=res["data"]["reference"]; st.session_state.pay_links_time=datetime.now()
+                else: st.error(f"Paystack error: {res.get('message')}")
     if st.session_state.pay_links_time and (datetime.now()-st.session_state.pay_links_time).total_seconds() > 3600:
         st.session_state.pay_links = {}; st.session_state.pay_refs = {}; st.session_state.pay_links_time = None
     for plan, link in st.session_state.pay_links.items():
         st.link_button(f"💳 Pay {plan} via Paystack", link, use_container_width=True)
+        st.caption(f"Link for {plan}: {link}")
     if st.session_state.pay_refs:
         if st.button("✅ I've Paid - Verify All", type="primary", use_container_width=True, key="verify_all_v691"):
             if verify_all_refs(): st.success("Unlocked & saved!"); st.rerun()
             else: st.warning("Not confirmed yet, try 30 sec")
     st.divider()
     st.markdown("#### 2️⃣ PayShap (Instant EFT)")
-    if st.button(f"💚 PayShap Weekly {st.session_state.geo['symbol']}{st.session_state.geo['weekly']}", key="payshap_week_v691", use_container_width=True): st.info(f"Send {st.session_state.geo['symbol']}{st.session_state.geo['weekly']} to PayShap ID, email proof to taahir532@gmail.com")
-    if st.button(f"💚 PayShap Monthly {st.session_state.geo['symbol']}{st.session_state.geo['monthly']}", key="payshap_month_v691", use_container_width=True): st.info(f"Send {st.session_state.geo['symbol']}{st.session_state.geo['monthly']} to PayShap ID, email proof to taahir532@gmail.com - manual activate")
-    if st.button(f"💚 PayShap Yearly {st.session_state.geo['symbol']}{st.session_state.geo['yearly']}", key="payshap_year_v691", use_container_width=True): st.info(f"Send {st.session_state.geo['symbol']}{st.session_state.geo['yearly']} to PayShap ID, email proof")
-    if st.button(f"💚 PayShap Once {st.session_state.geo['symbol']}{st.session_state.geo['once']} +10", key="payshap_once_v691", use_container_width=True): st.info(f"Send {st.session_state.geo['symbol']}{st.session_state.geo['once']} to PayShap ID, email proof")
+    payshap_id = st.secrets.get("PAYSHAP_ID", "Your PayShap ID here - add to secrets")
+    if st.button(f"💚 PayShap Weekly {st.session_state.geo['symbol']}{st.session_state.geo['weekly']}", key="payshap_week_v691", use_container_width=True): st.session_state.payshap_choice = f"WEEKLY_{st.session_state.geo['weekly']}"
+    if st.button(f"💚 PayShap Monthly {st.session_state.geo['symbol']}{st.session_state.geo['monthly']}", key="payshap_month_v691", use_container_width=True): st.session_state.payshap_choice = f"MONTHLY_{st.session_state.geo['monthly']}"
+    if st.button(f"💚 PayShap Yearly {st.session_state.geo['symbol']}{st.session_state.geo['yearly']}", key="payshap_year_v691", use_container_width=True): st.session_state.payshap_choice = f"YEARLY_{st.session_state.geo['yearly']}"
+    if st.button(f"💚 PayShap Once {st.session_state.geo['symbol']}{st.session_state.geo['once']} +10", key="payshap_once_v691", use_container_width=True): st.session_state.payshap_choice = f"ONCE_{st.session_state.geo['once']}"
+    if st.session_state.payshap_choice:
+        st.success(f"PayShap Selected: {st.session_state.payshap_choice}")
+        st.markdown(f'''**How to pay via PayShap:**
+        1. Open banking app -> PayShap
+        2. Send to ID: `{payshap_id}`
+        3. Amount: `{st.session_state.payshap_choice.split('_')[1]}` {st.session_state.geo['symbol']}
+        4. Reference: `{st.session_state.user.email if st.session_state.user else 'YOUR_EMAIL'}`
+        5. Email proof to: `taahir532@gmail.com` - manual 2h activation''')
+        st.code(f"PayShap ID: {payshap_id} | Amount: {st.session_state.payshap_choice} | Ref: {st.session_state.user.email if st.session_state.user else ''}", language="text")
     st.divider()
     st.markdown("#### 3️⃣ PayPal (Global)")
-    paypal_base = st.secrets.get("PAYPAL_ME","https://paypal.me/")
-    st.link_button(f"💙 PayPal Weekly {st.session_state.geo['symbol']}{st.session_state.geo['weekly']}", paypal_base, use_container_width=True)
-    st.link_button(f"💙 PayPal Monthly {st.session_state.geo['symbol']}{st.session_state.geo['monthly']}", paypal_base, use_container_width=True)
-    st.link_button(f"💙 PayPal Yearly {st.session_state.geo['symbol']}{st.session_state.geo['yearly']}", paypal_base, use_container_width=True)
-    st.link_button(f"💙 PayPal Once {st.session_state.geo['symbol']}{st.session_state.geo['once']} +10", paypal_base, use_container_width=True)
+    paypal_me = st.secrets.get("PAYPAL_ME", "https://paypal.me/")
+    paypal_email = st.secrets.get("PAYPAL_EMAIL", "taahir532@gmail.com")
+    if st.button(f"💙 PayPal Weekly {st.session_state.geo['symbol']}{st.session_state.geo['weekly']}", key="paypal_week_v691", use_container_width=True): st.session_state.paypal_choice = f"WEEKLY_{st.session_state.geo['weekly']}"
+    if st.button(f"💙 PayPal Monthly {st.session_state.geo['symbol']}{st.session_state.geo['monthly']}", key="paypal_month_v691", use_container_width=True): st.session_state.paypal_choice = f"MONTHLY_{st.session_state.geo['monthly']}"
+    if st.button(f"💙 PayPal Yearly {st.session_state.geo['symbol']}{st.session_state.geo['yearly']}", key="paypal_year_v691", use_container_width=True): st.session_state.paypal_choice = f"YEARLY_{st.session_state.geo['yearly']}"
+    if st.button(f"💙 PayPal Once {st.session_state.geo['symbol']}{st.session_state.geo['once']} +10", key="paypal_once_v691", use_container_width=True): st.session_state.paypal_choice = f"ONCE_{st.session_state.geo['once']}"
+    if st.session_state.paypal_choice:
+        st.success(f"PayPal Selected: {st.session_state.paypal_choice}")
+        st.markdown(f'''**How to pay via PayPal:**
+        - PayPal Email: `{paypal_email}`
+        - PayPal.me Link: {paypal_me}
+        - Amount: `{st.session_state.paypal_choice.split('_')[1]}`
+        - Send as Friends & Family, include your login email in note
+        - Email proof to `taahir532@gmail.com`''')
+        st.code(f"PayPal: {paypal_email} | Amount: {st.session_state.paypal_choice}", language="text")
+        st.link_button(f"💙 Open PayPal {paypal_me}", paypal_me, use_container_width=True)
     st.caption("After PayPal/PayShap, email proof to taahir532@gmail.com - we activate in 2h")
     st.caption("Secured by Paystack, PayShap, PayPal | v6.91")
 
