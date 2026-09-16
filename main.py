@@ -953,23 +953,24 @@ with tab_guide:
     <div class="guide-card"><h4>🏫 Principal Report</h4><p><b>How:</b> Auto summary for principals. Total students, average, pass rate, top CEFR. Download Excel + Official PDF.</p></div>
     <div class="guide-card"><h4>👨‍🏫 HOD Report</h4><p><b>How:</b> Filter by level (A1-C2). See average per level. Download per-level Excel + PDF for HOD.</p></div>
     <div class="guide-card"><h4>📈 History</h4><p><b>How:</b> Type student name → see all past scores + progress graph (first → last). Track improvement.</p></div>
-    <div class="guide-card"><h4>💎 SUPER</h4><p><b>How:</b> See supported languages with flags. See total graded + cache hits. Upgrade options.</p></div>
+    <div class="guide-card"><h4>💎 SUPER</h4><p><b>How:</b> See supported languages with flags. See total graded + cache hits. Upgrade options in sidebar.</p></div>
     ''', unsafe_allow_html=True)
 
 with tab_super:
     st.markdown("### 💎 SUPER Dashboard v6.91")
-    st.markdown("#### 🌍 Languages We Support")
+    st.markdown("#### 🌍 Languages We Support - Works on Windows, Mac, Phone")
     st.markdown('''
+    <style>.lang-card{display:flex;align-items:center;gap:10px;background:white;border:1px solid #eee;border-radius:12px;padding:12px;margin-bottom:8px;}.lang-card img{width:28px;height:20px;border-radius:3px;object-fit:cover;border:1px solid #ddd;}</style>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇬🇧 English</b><br><span style="color:#666;">UK, USA, South Africa, Australia</span></div>
-        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇿🇦 Afrikaans</b><br><span style="color:#666;">South Africa</span></div>
-        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇿🇦 Zulu</b><br><span style="color:#666;">South Africa</span></div>
-        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇪🇸 Spanish</b><br><span style="color:#666;">Spain, Mexico, Argentina</span></div>
-        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇧🇷 Portuguese</b><br><span style="color:#666;">Brazil, Portugal</span></div>
-        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇫🇷 French</b><br><span style="color:#666;">France, Canada, West Africa</span></div>
-        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇸🇦 Arabic</b><br><span style="color:#666;">Saudi Arabia, UAE, Egypt</span></div>
-        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇮🇳 Hindi</b><br><span style="color:#666;">India</span></div>
-        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇨🇳 Mandarin</b><br><span style="color:#666;">China, Taiwan, Singapore</span></div>
+        <div class="lang-card"><img src="https://flagcdn.com/w40/gb.png"/><div><b>English</b><br><span style="color:#666;font-size:13px;">UK, USA, South Africa, Australia</span></div></div>
+        <div class="lang-card"><img src="https://flagcdn.com/w40/za.png"/><div><b>Afrikaans</b><br><span style="color:#666;font-size:13px;">South Africa</span></div></div>
+        <div class="lang-card"><img src="https://flagcdn.com/w40/za.png"/><div><b>Zulu</b><br><span style="color:#666;font-size:13px;">South Africa</span></div></div>
+        <div class="lang-card"><img src="https://flagcdn.com/w40/es.png"/><div><b>Spanish</b><br><span style="color:#666;font-size:13px;">Spain, Mexico, Argentina</span></div></div>
+        <div class="lang-card"><img src="https://flagcdn.com/w40/br.png"/><div><b>Portuguese</b><br><span style="color:#666;font-size:13px;">Brazil, Portugal</span></div></div>
+        <div class="lang-card"><img src="https://flagcdn.com/w40/fr.png"/><div><b>French</b><br><span style="color:#666;font-size:13px;">France, Canada, West Africa</span></div></div>
+        <div class="lang-card"><img src="https://flagcdn.com/w40/sa.png"/><div><b>Arabic</b><br><span style="color:#666;font-size:13px;">Saudi Arabia, UAE, Egypt</span></div></div>
+        <div class="lang-card"><img src="https://flagcdn.com/w40/in.png"/><div><b>Hindi</b><br><span style="color:#666;font-size:13px;">India</span></div></div>
+        <div class="lang-card"><img src="https://flagcdn.com/w40/cn.png"/><div><b>Mandarin</b><br><span style="color:#666;font-size:13px;">China, Taiwan, Singapore</span></div></div>
     </div>
     ''', unsafe_allow_html=True)
     st.divider()
@@ -977,7 +978,6 @@ with tab_super:
         try: cnt = supabase.table("essays").select("id", count="exact").eq("teacher_id", st.session_state.teacher_id).execute(); total_graded = cnt.count if cnt.count is not None else 0
         except: total_graded = 0
         c1,c2 = st.columns(2); c1.metric("Total Graded (School OS)", total_graded); c2.metric("Cache Hits (Hash)", len(st.session_state.grade_cache))
-        st.divider(); st.markdown("#### Upgrade now - Choose method"); st.info("Paystack = instant auto-unlock + saved to Supabase. PayShap/PayPal = email proof to taahir532@gmail.com - manual 2h")
     else: st.warning("Login first")
 
 st.divider()
