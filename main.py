@@ -155,6 +155,7 @@ with st.sidebar:
             st.rerun()
         else:
             st.error("Code didn't work")
+
 tab_grade, tab_photo, tab_batch, tab_guide, tab_super = st.tabs(["📝 Grade", "📸 Photo / PDF", "Batch 50 (PRO)", "📘 Guide", "⭐ SUPER"])
 
 with tab_grade:
@@ -251,87 +252,92 @@ with tab_batch:
         if not uploaded:
             st.warning("Upload file first")
             st.stop()
-        essays = []
-        if uploaded.name.endswith(".csv"):
-            df = pd.read_csv(uploaded)
-            col = "essay" if "essay" in df.columns else df.columns[0]
-            essays = df[col].dropna().astype(str).tolist()[:50]
-        else:
-            content = uploaded.read().decode("utf-8", errors="ignore")
-            essays = [e.strip() for e in content.split("\n") if e.strip()][:50]
-        st.info(f"Grading {len(essays)} essays...")
+        try:
+            if uploaded.name.endswith(".csv"):
+                df = pd.read_csv(uploaded)
+                if 'essay' not in df.columns:
+                    df.columns = [c.strip().lower() for c in df.columns]
+                if 'essay' in df.columns:
+                    essays_list = df['essay'].astype(str).tolist()
+                elif 'text' in df.columns:
+                    essays_list = df['text'].astype(str).tolist()
+                else:
+                    essays_list = df.iloc[:,0].astype(str).tolist()
+                if 'student_name' in df.columns:
+                    names_list = df['student_name'].astype(str).tolist()
+                else:
+                    names_list = [f"Student {i+1}" for i in range(len(essays_list))]
+            else:
+                text_content = uploaded.getvalue().decode('utf-8', errors='ignore')
+                essays_list = [t.strip() for t in text_content.split('\n---\n') if t.strip()]
+                if not essays_list:
+                    essays_list = [t.strip() for t in text_content.splitlines() if t.strip()]
+                names_list = [f"Student {i+1}" for i in range(len(essays_list))]
+        except Exception as e:
+            st.error(f"File read error: {e}")
+            st.stop()
+        essays_list = essays_list[:50]
+        names_list = names_list[:50]
+        st.info(f"Found {len(essays_list)} essays, grading all...")
+        prog_bar = st.progress(0)
+        status_text = st.empty()
         results = []
-        progress = st.progress(0)
-        for i, es in enumerate(essays):
-            results.append({"Essay": es[:100], "Result": grade_with_groq(es[:2000], level_b)})
-            progress.progress((i+1)/len(essays))
-            st.session_state.total_graded += 1
-        st.success(f"Done! {len(results)} graded")
-        st.dataframe(pd.DataFrame(results))
-        pdf = FPDF()
-        pdf.set_auto_page_break(auto=True, margin=15)
-        for idx, r in enumerate(results):
-            pdf.add_page()
-            pdf.set_font("Arial", 'B', 12)
-            pdf.cell(0, 10, f"Essay {idx+1}", ln=True)
-            pdf.set_font("Arial", '', 10)
-            pdf.multi_cell(0, 6, clean(r["Result"]))
-        st.download_button("📄 Download All 50 Reports PDF", pdf.output(dest='S').encode('latin-1'), file_name="Batch_50.pdf", key="dl_batch")
+        for idx, ess in enumerate(essays_list):
+            status_text.text(f"Grading {idx+1}/{len(essays_list)}: {names_list[idx]}...")
+            prog_bar.progress((idx)/len(essays_list))
+            try:
+                res = grade_with_groq(ess, level_b)
+                results.append({"name": names_list[idx], "essay": ess[:200], "report": res})
+                st.session_state.total_graded += 1
+            except Exception as e:
+                results.append({"name": names_list[idx], "essay": ess[:200], "report": f"ERROR: {e}"})
+        prog_bar.progress(1.0)
+        status_text.text("Done!")
+        st.success(f"Graded {len(results)} essays!")
+        for r in results:
+            with st.expander(f"{r['name']}"):
+                st.markdown(r['report'][:1000])
+        df_out = pd.DataFrame([{"Name": r['name'], "Report": r['report']} for r in results])
+        st.download_button("📄 Download All Reports CSV", df_out.to_csv(index=False).encode('utf-8'), file_name=f"Batch_{level_b}.csv", key="batch_dl")
+
 with tab_guide:
-    st.markdown("## 📘 How To Use TEFLMate - Complete Guide")
-    st.info("Target Level = The level you WANT them to reach. We grade AGAINST that level.")
-    st.markdown("### 🚀 Quick Start - 3 Steps")
+    st.markdown("## 📘 How To Use TEFLMate")
     st.markdown("""
-    **Step 1: Choose Input Type**
-    - Typed essay? Use Grade tab
-    - Handwritten/photo? Use Photo / PDF tab
-    - 50 essays? Use Batch 50 tab
-
-    **Step 2: Select Target Level**
-    - If student is A2 but you want B1, PICK B1. Report shows GAP.
-
-    **Step 3: Grade & Download PDF**
-    - Click Grade, get report, download branded PDF
+    ### QUICK START
+    1. If typed, paste in GRADE tab
+    2. If handwritten, go to PHOTO/PDF tab
+    3. Choose level student SHOULD be at
+    4. Click grade, then download PDF for parents
     """)
     st.divider()
-    st.markdown("### 🎯 Choose Target Level Like This")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.success("**A1 – Beginner**\nGrade 1-3\n*I am happy...*\nChecks: Capitals, full stop")
-        st.warning("**B1 – Intermediate**\nGrade 7-9\n*120 words, however*\nChecks: Paragraphs")
-        st.error("**C1 – Advanced**\nUniversity\n*250 words academic*")
-    with c2:
-        st.info("**A2 – Elementary**\nGrade 4-6\n*Yesterday I went...*\nChecks: Past tense")
-        st.error("**B2 – Matric**\nGrade 10-12, IELTS 5.5\n*200 words argument*")
-        st.markdown("**C2 – Mastery**\nTeacher / IELTS 8+\n*Near native*")
-    st.divider()
-    st.markdown("### 📊 Grading Standards Explained")
-    st.table(pd.DataFrame([
-        {"Level": "A1", "Class": "Grade 1-3", "Words": "20-40", "Use For": "ABET"},
-        {"Level": "A2", "Class": "Grade 4-6", "Words": "50-80", "Use For": "Primary"},
-        {"Level": "B1", "Class": "Grade 7-9", "Words": "120-150", "Use For": "High school"},
-        {"Level": "B2", "Class": "Matric", "Words": "180-250", "Use For": "Matric, College"},
-        {"Level": "C1", "Class": "University", "Words": "250-300", "Use For": "University, Work"},
-        {"Level": "C2", "Class": "Mastery", "Words": "300+", "Use For": "Teachers"},
-    ]))
-    st.divider()
-    st.markdown("### ⚠️ Common Mistakes By Level")
+    st.markdown("### 📊 What Each Level Means")
     st.markdown("""
-    **A1-A2 usually:**
-    - I is -> I am / I was
-    - No capital I
-    - buyed -> bought
-    - No full stop
+    **A1 Beginner (Grade 3-5 equivalent):** Can write "I am Thandi. I like apples." Simple present only, 20-40 words.
 
-    **B1-B2 usually:**
-    - because at start needs comma
-    - No paragraphs
-    - very very good -> excellent
+    **A2 Elementary (Grade 6-7):** Past tense starts, "I went to shop yesterday." 40-80 words, basic connectors "and, but, because".
 
-    **C1-C2 usually:**
-    - Informal slang in formal essay
-    - Weak linking: but, and -> however, furthermore
-    - No thesis statement
+    **B1 Intermediate (Grade 8-9):** Can give reasons, opinions. "Although it was raining, we played." 80-150 words.
+
+    **B2 Upper-Intermediate (Grade 10-11):** Complex sentences, less mistakes. Can argue both sides. 150-250 words.
+
+    **C1 Advanced (Matric / University):** Fluent, wide vocab, idioms. "Not only...but also". 250+ words.
+
+    **C2 Proficient (Teacher level):** Near native, nuanced, academic.
+    """)
+    st.divider()
+    st.markdown("### ❗ Common Student Mistakes It Catches")
+    st.markdown("""
+    **South Africa Special:**
+    - I broked / I buyed -> broke / bought (irregular past)
+    - I am agree -> I agree (no 'am')
+    - He didn't came -> didn't come
+    - Loose vs Lose (lose = lost, loose = not tight)
+
+    **How we correct:**
+    - Spelling: recieve -> receive
+    - Grammar: "He go" -> "He goes"
+    - Tense: "Yesterday I go" -> "Yesterday I went"
+    - Word Order: "Yesterday went I" -> "Yesterday I went"
     """)
     st.divider()
     st.markdown("### 💡 Pro Tips For Teachers")
