@@ -677,14 +677,17 @@ with st.sidebar:
             else: st.warning("Not confirmed yet, try 30 sec")
     st.divider()
     st.markdown("#### 2️⃣ PayShap (Instant EFT)")
-    if st.button("💚 PayShap R99 Monthly", key="payshap_month_v691", use_container_width=True): st.info("Send R99 to PayShap ID from secrets, email proof to taahir532@gmail.com - manual activate")
-    if st.button("💚 PayShap R10 Once", key="payshap_once_v691", use_container_width=True): st.info("Send R10 to PayShap ID, email proof")
+    if st.button(f"💚 PayShap Weekly {st.session_state.geo['symbol']}{st.session_state.geo['weekly']}", key="payshap_week_v691", use_container_width=True): st.info(f"Send {st.session_state.geo['symbol']}{st.session_state.geo['weekly']} to PayShap ID, email proof to taahir532@gmail.com")
+    if st.button(f"💚 PayShap Monthly {st.session_state.geo['symbol']}{st.session_state.geo['monthly']}", key="payshap_month_v691", use_container_width=True): st.info(f"Send {st.session_state.geo['symbol']}{st.session_state.geo['monthly']} to PayShap ID, email proof to taahir532@gmail.com - manual activate")
+    if st.button(f"💚 PayShap Yearly {st.session_state.geo['symbol']}{st.session_state.geo['yearly']}", key="payshap_year_v691", use_container_width=True): st.info(f"Send {st.session_state.geo['symbol']}{st.session_state.geo['yearly']} to PayShap ID, email proof")
+    if st.button(f"💚 PayShap Once {st.session_state.geo['symbol']}{st.session_state.geo['once']} +10", key="payshap_once_v691", use_container_width=True): st.info(f"Send {st.session_state.geo['symbol']}{st.session_state.geo['once']} to PayShap ID, email proof")
     st.divider()
     st.markdown("#### 3️⃣ PayPal (Global)")
     paypal_base = st.secrets.get("PAYPAL_ME","https://paypal.me/")
+    st.link_button(f"💙 PayPal Weekly {st.session_state.geo['symbol']}{st.session_state.geo['weekly']}", paypal_base, use_container_width=True)
     st.link_button(f"💙 PayPal Monthly {st.session_state.geo['symbol']}{st.session_state.geo['monthly']}", paypal_base, use_container_width=True)
-    st.link_button(f"💙 PayPal Once {st.session_state.geo['symbol']}{st.session_state.geo['once']}", paypal_base, use_container_width=True)
     st.link_button(f"💙 PayPal Yearly {st.session_state.geo['symbol']}{st.session_state.geo['yearly']}", paypal_base, use_container_width=True)
+    st.link_button(f"💙 PayPal Once {st.session_state.geo['symbol']}{st.session_state.geo['once']} +10", paypal_base, use_container_width=True)
     st.caption("After PayPal/PayShap, email proof to taahir532@gmail.com - we activate in 2h")
     st.caption("Secured by Paystack, PayShap, PayPal | v6.91")
 
@@ -935,25 +938,41 @@ with tab_history:
     else: st.info("Type student name above to see progress graph - School OS")
 
 with tab_guide:
-    st.markdown("### 📊 TEFL Grading Guide & Earnings v6.91")
-    st.markdown("""
-    **Common mistakes we detect:**
-    - A1/A2: Missing verb 'be', no capital 'I', simple spelling
-    - B1/B2: Article errors (a/the), tense mixing, run-on
-    - C1/C2: Cohesion, register, complex grammar misuse
-    **OCR v6.91:** Fixed + Enhanced
-    **Paystack:** R10 once +10, R49 weekly, R99 monthly, R799 yearly - auto unlock & saved to DB
-    **PayShap:** Instant EFT - email proof to taahir532@gmail.com
-    **PayPal:** Global - email proof
-    **School OS:** Portfolio + Principal + HOD + Parent Links + History Graph + Hash Cache
-    """)
-    st.divider()
-    st.markdown("#### 💰 Earnings Simulator v6.91")
-    studs = st.slider("How many students?", 10, 500, 100, key="earn_slider_v691"); price_per = st.number_input(f"Price per student ({st.session_state.geo['symbol']})", value=10, key="earn_price_v691"); earn = studs * price_per; st.metric("Monthly earning", f"{st.session_state.geo['symbol']}{earn}")
+    st.markdown("### 📊 TEFLMate Guide v6.91 - How to Use Every Tab")
+    st.markdown('''
+    <style>.guide-card{background:white;border:1px solid #eee;border-radius:16px;padding:16px;margin-bottom:12px;}</style>
+    <div class="guide-card"><h4>🏠 Home</h4><p>Your dashboard. See free grades left, PRO status, and active teacher count. Start here.</p></div>
+    <div class="guide-card"><h4>📄 CV Builder</h4><p><b>How:</b> Fill name, email, experience, levels. Click <b>Generate CV with AI</b>. Download PDF. Use for job applications.</p></div>
+    <div class="guide-card"><h4>✉️ Cover Letter</h4><p><b>How:</b> Enter school name + position + achievements. Click Generate. Download PDF.</p></div>
+    <div class="guide-card"><h4>📖 Lesson Plan</h4><p><b>How:</b> Choose level, topic, duration, focus. Click Generate. Full plan with objectives, warm-up, practice, homework. Download PDF.</p></div>
+    <div class="guide-card"><h4>📚 Portfolio</h4><p><b>How:</b> Auto-saves every graded essay to School OS. Search by name, filter by level. Download Excel + Parent Links (share link with parents).</p></div>
+    <div class="guide-card"><h4>✍ Grade</h4><p><b>How:</b> Type name + level + paste essay. Or take photo → <b>Read Handwriting</b> → Edit → Grade. Score 0-10, CEFR, confidence. Auto-saved.</p></div>
+    <div class="guide-card"><h4>📸 Photo Grade</h4><p><b>How:</b> Snap or upload handwritten books. Click <b>Read + Edit</b> → fix text → <b>Grade Photo Essay</b>. Best for 40 books in 2 mins.</p></div>
+    <div class="guide-card"><h4>📦 Batch (PRO)</h4><p><b>How:</b> Paste essays separated by --- or upload CSV (Student,Essay,Level). Click <b>Grade 50 Essays</b>. Download Excel + Principal PDF.</p></div>
+    <div class="guide-card"><h4>👤 Single</h4><p><b>How:</b> Quick manual grade for one student. Name + Level + Essay → Grade.</p></div>
+    <div class="guide-card"><h4>🏫 Principal Report</h4><p><b>How:</b> Auto summary for principals. Total students, average, pass rate, top CEFR. Download Excel + Official PDF.</p></div>
+    <div class="guide-card"><h4>👨‍🏫 HOD Report</h4><p><b>How:</b> Filter by level (A1-C2). See average per level. Download per-level Excel + PDF for HOD.</p></div>
+    <div class="guide-card"><h4>📈 History</h4><p><b>How:</b> Type student name → see all past scores + progress graph (first → last). Track improvement.</p></div>
+    <div class="guide-card"><h4>💎 SUPER</h4><p><b>How:</b> See supported languages with flags. See total graded + cache hits. Upgrade options.</p></div>
+    ''', unsafe_allow_html=True)
 
 with tab_super:
     st.markdown("### 💎 SUPER Dashboard v6.91")
-    st.caption(f"Local pricing: {st.session_state.geo['symbol']}{st.session_state.geo['weekly']}/{st.session_state.geo['monthly']}/{st.session_state.geo['yearly']} | v6.91")
+    st.markdown("#### 🌍 Languages We Support")
+    st.markdown('''
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇬🇧 English</b><br><span style="color:#666;">UK, USA, South Africa, Australia</span></div>
+        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇿🇦 Afrikaans</b><br><span style="color:#666;">South Africa</span></div>
+        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇿🇦 Zulu</b><br><span style="color:#666;">South Africa</span></div>
+        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇪🇸 Spanish</b><br><span style="color:#666;">Spain, Mexico, Argentina</span></div>
+        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇧🇷 Portuguese</b><br><span style="color:#666;">Brazil, Portugal</span></div>
+        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇫🇷 French</b><br><span style="color:#666;">France, Canada, West Africa</span></div>
+        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇸🇦 Arabic</b><br><span style="color:#666;">Saudi Arabia, UAE, Egypt</span></div>
+        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇮🇳 Hindi</b><br><span style="color:#666;">India</span></div>
+        <div style="background:white; border:1px solid #eee; border-radius:12px; padding:12px;"><b>🇨🇳 Mandarin</b><br><span style="color:#666;">China, Taiwan, Singapore</span></div>
+    </div>
+    ''', unsafe_allow_html=True)
+    st.divider()
     if st.session_state.teacher_id:
         try: cnt = supabase.table("essays").select("id", count="exact").eq("teacher_id", st.session_state.teacher_id).execute(); total_graded = cnt.count if cnt.count is not None else 0
         except: total_graded = 0
