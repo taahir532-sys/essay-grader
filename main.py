@@ -178,6 +178,26 @@ if "submit" in q_submit:
     except Exception as e:
         st.error(f"Student submit error: {e}")
         st.stop()
+q_parent = st.query_params
+if "parent" in q_parent:
+    try:
+        essay_id = q_parent.get("parent")
+        if isinstance(essay_id, list): essay_id = essay_id[0]
+        st.markdown('<div class="tefl-header"><div>📚 TEFLMate - Parent Report</div><div class="tefl-badge">PARENT VIEW</div></div>', unsafe_allow_html=True)
+        row = supabase.table("essays").select("*").eq("id", essay_id).execute()
+        if row.data:
+            r = row.data[0]
+            st.title(f"Report for {r['student_name']}")
+            st.metric("Score", f"{r['score']}/10", r['cefr'])
+            st.markdown(f"**Level:** {r['level']} | **Date:** {str(r['created_at'])[:10]}")
+            st.divider()
+            st.markdown(r['feedback'])
+        else:
+            st.error("Report not found")
+        st.stop()
+    except Exception as e:
+        st.error(f"Parent view error: {e}")
+        st.stop()
 q_rec = st.query_params
 has_token = False
 try:
@@ -548,6 +568,41 @@ if st.session_state.get("show_admin") and is_admin():
     except Exception as e: st.error(str(e))
     if st.button("Close Admin"): st.session_state.show_admin = False; st.rerun()
     st.stop()
+
+tab_home, tab_cv, tab_cover, tab_lesson, tab_port, tab_grade, tab_photo, tab_batch, tab_single, tab_principal, tab_hod, tab_history, tab_guide, tab_super = st.tabs(["Home","CV","Cover","Lesson","Portfolio","Grade","Photo","Batch","Single","Principal","HOD","History","Guide","SUPER"])
+
+with tab_home:
+    st.markdown('<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate v6.9.1</div><div class="tefl-badge">MADE IN DURBAN</div></div>', unsafe_allow_html=True)
+    st.markdown("""<div class="landing-hero"><h2>Everything for TEFL Teachers - One App</h2><p>Grade 40 books in 2 mins, create CV, Cover Letter, Lesson Plans, Contracts, Principal Reports & Parent Reports.</p></div>""", unsafe_allow_html=True)
+    c1,c2,c3 = st.columns(3); c1.metric("Free Grades", f"{FREE_LIMIT - st.session_state.uses} left"); c2.metric("Plan", get_status()); c3.metric("Teachers", "500+ Active")
+with tab_cv:
+    st.markdown("### 📄 TEFL CV Builder")
+    col1,col2 = st.columns(2)
+    with col1:
+        cv_name = st.text_input("Full Name", key="cv_name"); cv_email = st.text_input("Email", value=st.session_state.user.email if st.session_state.user else "", key="cv_email"); cv_phone = st.text_input("Phone", key="cv_phone"); cv_location = st.text_input("Location", value="Durban, South Africa", key="cv_loc")
+    with col2:
+        cv_exp_years = st.selectbox("Experience", ["0-1 years","1-3 years","3-5 years","5+ years"], key="cv_exp_y"); cv_level = st.selectbox("Teach Levels", ["Young Learners","Teens","Adults","Business English","All Levels"], key="cv_levels"); cv_certs = st.text_input("Certs", value="TEFL 120hr, IELTS", key="cv_certs_in")
+    cv_profile = st.text_area("Profile Summary", height=80, key="cv_profile"); cv_experience = st.text_area("Experience", height=100, key="cv_exp"); cv_education = st.text_area("Education", height=80, key="cv_edu"); cv_skills = st.text_area("Skills", value="Classroom Management, Cambridge Exam Prep", height=60, key="cv_skills")
+    if st.button("✨ Generate CV with AI", type="primary", use_container_width=True, key="gen_cv"):
+        with st.spinner("Creating CV..."):
+            client = get_groq(); prompt = f"Create professional TEFL CV for {cv_name}, {cv_exp_years}, {cv_level}, certs {cv_certs}, profile {cv_profile}, experience {cv_experience}, education {cv_education}, skills {cv_skills}."
+            try:
+                res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}], temperature=0.3)
+                ai_cv = res.choices[0].message.content; st.markdown(ai_cv)
+                cv_data = {"name": cv_name, "email": cv_email, "phone": cv_phone, "profile": ai_cv, "experience": cv_experience, "education": cv_education, "skills": cv_skills, "certs": cv_certs}
+                pdf = create_cv_pdf(cv_data); st.download_button("📥 Download CV PDF", pdf, file_name=f"CV_{cv_name}.pdf", mime="application/pdf", use_container_width=True)
+            except Exception as e: st.error(str(e))
+with tab_cover:
+    st.markdown("### ✉️ Cover Letter Builder")
+    school_name = st.text_input("School Name", key="cover_school"); position = st.text_input("Position", value="English Teacher", key="cover_pos"); hiring_manager = st.text_input("Hiring Manager", key="cover_hm"); cl_exp = st.text_area("Key Achievements", height=100, key="cover_exp")
+    if st.button("✨ Generate Cover Letter", type="primary", use_container_width=True, key="gen_cover"):
+        with st.spinner("Writing..."):
+            client = get_groq(); prompt = f"Write professional TEFL cover letter for {position} at {school_name}, manager {hiring_manager}, achievements {cl_exp}. 250 words."
+            try:
+                res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}], temperature=0.4)
+                letter = res.choices[0].message.content; st.markdown(letter)
+                pdf = create_cover_letter_pdf(letter, "Applicant"); st.download_button("📥 Download Cover Letter PDF", pdf, file_name=f"Cover_{school_name}.pdf", mime="application/pdf", use_container_width=True)
+            except Exception as e: st.error(str(e))
 with tab_lesson:
     st.markdown("### 📖 Lesson Plan Generator")
     lp_level = st.selectbox("Class Level", ["A1","A2","B1","B2","C1","C2"], key="lp_level"); lp_topic = st.text_input("Topic", placeholder="Past Simple, Environment", key="lp_topic"); lp_duration = st.selectbox("Duration", ["30 mins","45 mins","60 mins","90 mins"], key="lp_dur"); lp_focus = st.selectbox("Focus", ["Grammar","Vocabulary","Speaking","Writing","Reading","Mixed"], key="lp_focus"); lp_students = st.number_input("Students", value=20, key="lp_students")
@@ -731,53 +786,53 @@ with tab_history:
         except Exception as e: st.error(str(e))
     else: st.info("Type student name above to see graph")
 with tab_guide:
-    st.markdown("### 📊 TEFLMate Guide - How to Use")
+    st.markdown("### TEFLMate Guide - How to Use")
     st.markdown("""
-    **Welcome to TEFLMate v6.9.1 - Made in Durban, ZA**
+    Welcome to TEFLMate v6.9.1 - Made in Durban, ZA
 
-    **How to use the app:**
-    1. **Home** - Overview of your plan and usage
-    2. **📄 CV Builder** - Generate professional TEFL CV with AI
-    3. **✉️ Cover Letter** - Create cover letter for schools
-    4. **📖 Lesson Plan** - Generate lesson plans by level/topic
-    5. **📚 Portfolio** - View all graded essays, search student, filter by level, download Excel + Parent Links
-    6. **✍ Grade** - Paste essay OR take photo/upload image -> Read Handwriting (Qwen OCR) -> Grade
-    7. **📸 Photo Grade** - Photo + PDF scan grading for handwritten books
-    8. **📦 Batch 50** - Grade 50 essays at once via text or CSV
-    9. **👤 Single History** - Search student name to see progress graph
-    10. **🏫 Principal** - School-wide report, class averages
-    11. **👨‍🏫 HOD** - Department view for HODs
-    12. **📊 Guide** - This help page
-    13. **💎 SUPER** - Upgrade, pricing, languages
+    How to use the app:
+    1. Home - Overview of your plan and usage
+    2. CV Builder - Generate professional TEFL CV with AI
+    3. Cover Letter - Create cover letter for schools
+    4. Lesson Plan - Generate lesson plans by level/topic
+    5. Portfolio - View all graded essays, search student, filter by level, download Excel + Parent Links
+    6. Grade - Paste essay OR take photo/upload image -> Read Handwriting (Qwen OCR) -> Grade
+    7. Photo Grade - Photo + PDF scan grading for handwritten books
+    8. Batch 50 - Grade 50 essays at once via text or CSV
+    9. Single History - Search student name to see progress graph
+    10. Principal - School-wide report, class averages
+    11. HOD - Department view for HODs
+    12. Guide - This help page
+    13. SUPER - Upgrade, pricing, languages
 
-    **Features:**
-    - ✅ Qwen Vision OCR for handwriting
-    - ✅ Auto-save to Portfolio
-    - ✅ Parent shareable links
-    - ✅ PDF reports with branding
-    - ✅ 9 Languages feedback
-    - ✅ AI detection risk flag
-    - ✅ Geo pricing: SA R49 / Outside $8.50
-    - ✅ Paystack instant unlock + PayShap/PayPal
+    Features:
+    - Qwen Vision OCR for handwriting
+    - Auto-save to Portfolio
+    - Parent shareable links
+    - PDF reports with branding
+    - 9 Languages feedback
+    - AI detection risk flag
+    - Geo pricing: SA R49 / Outside $8.50
+    - Paystack instant unlock + PayShap/PayPal
 
-    **Grading Levels:**
-    - A1/A2: Basic - Checks verb 'be', capital 'I', spelling
+    Grading Levels:
+    - A1/A2: Basic - Checks verb be, capital I, spelling
     - B1/B2: Intermediate - Articles (a/the), tenses, run-on sentences
     - C1/C2: Advanced - Cohesion, register, complex grammar
     """)
 with tab_super:
-    st.markdown("### 💎 SUPER Dashboard - Languages & Upgrade")
+    st.markdown("### SUPER Dashboard - Languages & Upgrade")
     st.markdown("""
-    **🌍 Supported Feedback Languages (9):**
-    - 🇿🇦 English - South Africa / Global
-    - 🇿🇦 Afrikaans - South Africa
-    - 🇿🇦 isiZulu - South Africa
-    - 🇪🇸 Spanish - Spain, Mexico, South America
-    - 🇵🇹 Portuguese - Portugal, Brazil, Mozambique
-    - 🇫🇷 French - France, West Africa
-    - 🇸🇦 Arabic - Saudi, UAE, North Africa
-    - 🇮🇳 Hindi - India
-    - 🇨🇳 Mandarin - China
+    Supported Feedback Languages (9):
+    - English - South Africa / Global
+    - Afrikaans - South Africa
+    - isiZulu - South Africa
+    - Spanish - Spain, Mexico, South America
+    - Portuguese - Portugal, Brazil, Mozambique
+    - French - France, West Africa
+    - Arabic - Saudi, UAE, North Africa
+    - Hindi - India
+    - Mandarin - China
 
     All grading feedback can be translated into these languages.
     """)
@@ -790,6 +845,4 @@ with tab_super:
         st.divider(); st.markdown("#### Upgrade now - Choose method"); st.info("Paystack = instant auto-unlock. PayShap/PayPal = email proof to taahir532@gmail.com")
     else: st.warning("Login first")
 
-st.divider()
 st.markdown("<div style='text-align:center; padding:12px; font-weight:600; color:#555;'>© 2026 TEFLMate | Made in Durban, ZA | TEFLMate v6.9.1 Hash+White Fix | Ping OK</div>", unsafe_allow_html=True)
-
