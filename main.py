@@ -258,14 +258,14 @@ if st.session_state.user is None:
     except: pass
 
 def login_screen():
-    st.markdown("""<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate</div><div class="tefl-badge">TEFLMate v6.91 FULL</div></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate</div><div class="tefl-badge">v6.91</div></div>""", unsafe_allow_html=True)
     col1, col2 = st.columns([1.2,1])
     with col1:
-        st.markdown("""<div class="landing-hero"><h2 style="margin:0;">Grade 40 books in 2 minutes 📸</h2><p style="color:#555;">Photo-grade • Track progress • Parent reports • Student Self-Submit • CV & Lesson Plans • School OS v6.91</p><ul><li>✅ Snap photo → Edit OCR (qwen2.5-vl-32b-instruct) → Grade → Save</li><li>✅ Grammar/Vocab/Coherence breakdown + Confidence flag + AI Risk</li><li>✅ CV, Cover Letter, Lesson Plan, Principal OS, HOD, History</li></ul></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="landing-hero"><h2 style="margin:0;">Grade 40 books in 2 minutes 📸</h2><p style="color:#555;">Photo-grade • Track progress • Parent reports • Student Self-Submit • CV & Lesson Plans • School OS v6.91</p><ul><li>✅ Snap photo → Edit → Grade → Save</li><li>✅ Grammar/Vocab/Coherence breakdown + Confidence flag + AI Risk</li><li>✅ CV, Cover Letter, Lesson Plan, Principal OS, HOD, History</li></ul></div>""", unsafe_allow_html=True)
     with col2:
         st.markdown("#### ⭐ What teachers say")
         st.markdown('<div class="testimonial"><b>Teacher from Durban:</b> "Saves 5hrs a week. Parents love reports! Compressor + Hash Cache is fast" ⭐⭐⭐⭐⭐</div>', unsafe_allow_html=True)
-        st.markdown('<div class="testimonial"><b>Teacher from Brazil:</b> "Photo grading magic with Qwen2.5-VL" ⭐⭐⭐⭐⭐</div>', unsafe_allow_html=True)
+        st.markdown('<div class="testimonial"><b>Teacher from Brazil:</b> "Photo grading magic" ⭐⭐⭐⭐⭐</div>', unsafe_allow_html=True)
     st.divider()
     st.markdown("### 🔑 Login to your class")
     t1, t2 = st.tabs(["🔑 Login", "✨ Sign Up"])
@@ -682,11 +682,11 @@ with st.sidebar:
     st.divider()
     st.markdown("#### 3️⃣ PayPal (Global)")
     paypal_base = st.secrets.get("PAYPAL_ME","https://paypal.me/")
-    st.link_button(f"💙 PayPal Monthly ${st.session_state.geo['monthly']} / $8.50", paypal_base, use_container_width=True)
-    st.link_button(f"💙 PayPal Once ${st.session_state.geo['once']} / $0.99", paypal_base, use_container_width=True)
-    st.link_button(f"💙 PayPal Yearly ${st.session_state.geo['yearly']} / $65", paypal_base, use_container_width=True)
+    st.link_button(f"💙 PayPal Monthly {st.session_state.geo['symbol']}{st.session_state.geo['monthly']}", paypal_base, use_container_width=True)
+    st.link_button(f"💙 PayPal Once {st.session_state.geo['symbol']}{st.session_state.geo['once']}", paypal_base, use_container_width=True)
+    st.link_button(f"💙 PayPal Yearly {st.session_state.geo['symbol']}{st.session_state.geo['yearly']}", paypal_base, use_container_width=True)
     st.caption("After PayPal/PayShap, email proof to taahir532@gmail.com - we activate in 2h")
-    st.caption("Secured by Paystack, PayShap, PayPal | v6.91 | qwen2.5-vl-32b-instruct")
+    st.caption("Secured by Paystack, PayShap, PayPal | v6.91")
 
 if st.session_state.get("show_admin") and is_admin():
     st.title("🛠 Super Admin Dashboard v6.91")
@@ -704,9 +704,9 @@ if st.session_state.get("show_admin") and is_admin():
 tab_home, tab_cv, tab_cover, tab_lesson, tab_port, tab_grade, tab_photo, tab_batch, tab_single, tab_principal, tab_hod, tab_history, tab_guide, tab_super = st.tabs(["🏠 Home","📄 CV","✉️ Cover","📖 Lesson","📚 Portfolio","✍ Grade","📸 Photo","📦 Batch","👤 Single","🏫 Principal","👨‍🏫 HOD","📈 History","📊 Guide","💎 SUPER"])
 
 with tab_home:
-    st.markdown('<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate v6.91 FULL 14-TAB</div><div class="tefl-badge">MADE IN DURBAN - Contract Removed</div></div>', unsafe_allow_html=True)
-    st.markdown("""<div class="landing-hero"><h2>Everything for TEFL Teachers - One App - v6.91</h2><p>Grade 40 books in 2 mins, create CV, Cover Letter, Lesson Plans, Principal Reports & Parent Reports. OCR: qwen2.5-vl-32b-instruct</p></div>""", unsafe_allow_html=True)
-    c1,c2,c3 = st.columns(3); c1.metric("Free Grades", f"{FREE_LIMIT - st.session_state.uses} left"); c2.metric("Plan", f"{'PRO' if is_pro() else 'FREE'}"); c3.metric("Teachers", "500+ Active"); c3.metric("OCR", "Qwen2.5-VL 32B")
+    st.markdown('<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate</div><div class="tefl-badge">v6.91</div></div>', unsafe_allow_html=True)
+    st.markdown("""<div class="landing-hero"><h2>Everything for TEFL Teachers - One App - v6.91</h2><p>Grade 40 books in 2 mins, create CV, Cover Letter, Lesson Plans, Principal Reports & Parent Reports.</p></div>""", unsafe_allow_html=True)
+    c1,c2,c3 = st.columns(3); c1.metric("Free Grades", f"{FREE_LIMIT - st.session_state.uses} left"); c2.metric("Plan", f"{'PRO' if is_pro() else 'FREE'}"); c3.metric("Teachers", "500+ Active")
 
 with tab_cv:
     st.markdown("### 📄 TEFL CV Builder v6.91")
@@ -786,8 +786,8 @@ with tab_grade:
     elif up: img_bytes = up.getvalue()
     if img_bytes:
         st.image(img_bytes, use_container_width=True)
-        if st.button("📖 Read Handwriting (Qwen2.5-VL)", use_container_width=True, key="grade_ocr_btn_v691"):
-            with st.spinner("Reading with qwen2.5-vl-32b-instruct..."): txt = extract_text_from_image(img_bytes); st.session_state.editable_ocr = txt; st.success("OCR done with Qwen2.5-VL!")
+        if st.button("📖 Read Handwriting", use_container_width=True, key="grade_ocr_btn_v691"):
+            with st.spinner("Reading..."): txt = extract_text_from_image(img_bytes); st.session_state.editable_ocr = txt; st.success("OCR done!")
     if st.session_state.editable_ocr: essay_input = st.text_area("✏ Edit OCR:", value=st.session_state.editable_ocr, height=150, key="grade_edit_ocr_1967_v691")
     pdf_up = st.file_uploader("Or upload PDF", type=["pdf"], key="grade_pdf_1967_v691")
     if pdf_up:
@@ -805,7 +805,7 @@ with tab_grade:
                 pdf_bytes = create_branded_pdf(essay_input, feedback_text, t_level, s_name or "Student"); st.download_button("📥 Download PDF Report v6.91", pdf_bytes, file_name=f"{(s_name or 'Student')}_{score}10_{cefr}_v6.91.pdf", mime="application/pdf", use_container_width=True)
 
 with tab_photo:
-    st.markdown("### 📸 Photo Grade + PDF Scan - Qwen2.5-VL v6.91")
+    st.markdown("### 📸 Photo Grade + PDF Scan v6.91")
     s_name_p = st.text_input("Student Name (Photo):", key="photo_name_1967_v691"); t_level_p = st.selectbox("Level:", ["A1","A2","B1","B2","C1","C2"], key="photo_level_1967_v691")
     cam_p = st.camera_input("Take photo", key="photo_cam_1967_v691"); up_p = st.file_uploader("Upload photo", type=["jpg","jpeg","png"], key="photo_up_1967_v691"); pdf_p = st.file_uploader("Or Upload PDF scan", type=["pdf"], key="photo_pdf_1967_v691")
     pb = None; pdf_txt = ""
@@ -815,8 +815,8 @@ with tab_photo:
         with st.spinner("Reading PDF..."): pdf_txt = extract_text_from_pdf(pdf_p.getvalue()); st.text_area("PDF Extracted:", value=pdf_txt[:2000], height=120, key="pdf_preview_photo_v691")
     if pb:
         st.image(pb, use_container_width=True)
-        if st.button("Read + Edit (Qwen2.5-VL)", use_container_width=True, key="photo_read_btn_v691"):
-            with st.spinner("OCR qwen2.5-vl-32b-instruct..."): txt = extract_text_from_image(pb); st.session_state.last_photo_result = txt; st.session_state.editable_ocr = txt
+        if st.button("Read + Edit", use_container_width=True, key="photo_read_btn_v691"):
+            with st.spinner("Reading..."): txt = extract_text_from_image(pb); st.session_state.last_photo_result = txt; st.session_state.editable_ocr = txt
         if st.session_state.last_photo_result:
             edit_p = st.text_area("Edit before grading:", value=st.session_state.last_photo_result, height=150, key="photo_edit_1967_v691")
             if st.button("Grade Photo Essay", type="primary", use_container_width=True, key="photo_grade_btn_v691"):
@@ -941,10 +941,10 @@ with tab_guide:
     - A1/A2: Missing verb 'be', no capital 'I', simple spelling
     - B1/B2: Article errors (a/the), tense mixing, run-on
     - C1/C2: Cohesion, register, complex grammar misuse
-    **OCR v6.91:** qwen2.5-vl-32b-instruct (fixed) + llama-4-scout + llama-4-maverick
+    **OCR v6.91:** Fixed + Enhanced
     **Paystack:** R10 once +10, R49 weekly, R99 monthly, R799 yearly - auto unlock & saved to DB
     **PayShap:** Instant EFT - email proof to taahir532@gmail.com
-    **PayPal:** Global - $0.99, $8.50, $65 - email proof
+    **PayPal:** Global - email proof
     **School OS:** Portfolio + Principal + HOD + Parent Links + History Graph + Hash Cache
     """)
     st.divider()
@@ -953,7 +953,7 @@ with tab_guide:
 
 with tab_super:
     st.markdown("### 💎 SUPER Dashboard v6.91")
-    st.caption(f"Local pricing: {st.session_state.geo['symbol']}{st.session_state.geo['weekly']}/{st.session_state.geo['monthly']}/{st.session_state.geo['yearly']} | OCR: qwen2.5-vl-32b-instruct | 14-TAB Contract Removed")
+    st.caption(f"Local pricing: {st.session_state.geo['symbol']}{st.session_state.geo['weekly']}/{st.session_state.geo['monthly']}/{st.session_state.geo['yearly']} | v6.91")
     if st.session_state.teacher_id:
         try: cnt = supabase.table("essays").select("id", count="exact").eq("teacher_id", st.session_state.teacher_id).execute(); total_graded = cnt.count if cnt.count is not None else 0
         except: total_graded = 0
@@ -962,4 +962,4 @@ with tab_super:
     else: st.warning("Login first")
 
 st.divider()
-st.markdown("<div style='text-align:center; padding:12px; font-weight:600; color:#555;'>© 2026 TEFLMate | Made in Durban, ZA | TEFLMate v6.91 FINAL 14-TAB - Contract Removed | OCR: qwen2.5-vl-32b-instruct | Hash Cache + Compressor | Ping OK</div>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center; padding:12px; font-weight:600; color:#555;'>© 2026 TEFLMate | Made in Durban, ZA | TEFLMate v6.91 | Hash Cache + Compressor</div>", unsafe_allow_html=True)
