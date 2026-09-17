@@ -675,7 +675,7 @@ with st.sidebar:
         if st.button("✅ I've Paid - Verify All", type="primary", use_container_width=True, key="verify_all_v691"):
             if verify_all_refs(): st.success("Unlocked & saved!"); st.rerun()
             else: st.warning("Not confirmed yet, try 30 sec")
-       st.divider()
+    st.divider()
     st.markdown("### 2️⃣ PayShap (Instant EFT)")
     if "payshap_choice" not in st.session_state: st.session_state.payshap_choice = None
     if st.button(f"💚 PayShap Weekly {st.session_state.geo['symbol']}{st.session_state.geo['weekly']}", key="payshap_week_v691", use_container_width=True): st.session_state.payshap_choice = f"Weekly {st.session_state.geo['symbol']}{st.session_state.geo['weekly']}"
