@@ -696,8 +696,29 @@ with st.sidebar:
     if st.session_state.paypal_choice:
         st.success(f"PayPal {st.session_state.paypal_choice} selected - taahir532@gmail.com")
         st.link_button(f"Pay {st.session_state.paypal_choice} via PayPal", paypal_base, use_container_width=True)
-    st.caption("After PayPal/PayShap, email proof to taahir532@gmail.com - we activate in 2h")
+        st.caption("After PayPal/PayShap, email proof to taahir532@gmail.com - we activate in 2h")
     st.caption("Secured by Paystack, PayShap, PayPal | v6.91")
+
+    st.divider()
+    st.subheader("Have a promo code?")
+    promo = st.text_input("Promo Code:", value="", placeholder="Enter code", key="promo_code_800_new")
+    # codes hidden - box empty, user must type
+    if promo:
+        p = promo.strip().upper()
+        if p == "MONTH99":
+            st.session_state["promo_plan"] = "monthly_99"
+            st.success("MONTH99 applied - 1 Month for R99")
+        elif p == "WEEK99":
+            st.session_state["promo_plan"] = "weekly_99"
+            st.success("WEEK99 applied - 1 Week for R99")
+        elif p == "YEAR99":
+            st.session_state["promo_plan"] = "yearly_99"
+            st.success("YEAR99 applied - 1 Year for R99")
+        elif p == "TEFL2024":
+            st.session_state["promo_plan"] = "tefl2024"
+            st.success("TEFL2024 applied")
+        else:
+            st.error("Invalid promo code")
 
 if st.session_state.get("show_admin") and is_admin():
     st.title("🛠 Super Admin Dashboard v6.91")
