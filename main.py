@@ -632,13 +632,20 @@ with st.sidebar:
         with st.expander("⚙ Settings - Language & Standard", expanded=False):
             st.session_state.feedback_lang = st.selectbox("Feedback Language", ["English","Afrikaans","Zulu","Spanish","Portuguese","French","Arabic","Hindi","Mandarin"], index=0, key="lang_sel_v691")
             st.session_state.grading_standard = st.selectbox("Grading Standard", ["CEFR","IELTS","TOEFL","US Grade"], index=0, key="std_sel_v691")
-            promo_in = st.text_input("Promo Code:", placeholder="TEFL20 or TRYSUPER", key="promo_sidebar_1967")
-            if st.button("Apply Promo", use_container_width=True, key="promo_btn_v691"):
-                if promo_in.upper()=="TEFL20":
-                    st.session_state.uses = max(0, st.session_state.uses-2); st.session_state.promo_success = True; save_pro_to_db(None, "PROMO-TEFL20", 2); st.success("TEFL20 = +2 grades added & saved!"); st.rerun()
-                elif promo_in.upper()=="TRYSUPER":
-                    new_exp = datetime.now() + timedelta(days=7); save_pro_to_db(new_exp, "TRYSUPER-7DAY", 0); st.session_state.pro_expiry = new_exp; st.session_state.active_plan = "TRYSUPER-7DAY"; st.success("TRYSUPER = 7 days PRO!"); st.rerun()
-                else: st.error("Invalid code - try TEFL20 or TRYSUPER")
+                   promo_in = st.text_input("Promo Code:", value="", placeholder="Enter code", key="promo_sidebar_1967")
+        if st.button("Apply Promo", use_container_width=True, key="promo_btn_v691"):
+            p = promo_in.strip().upper()
+            if p=="TEFL20":
+                st.session_state.uses = max(0, st.session_state.uses-2); st.session_state.promo_success = True; save_pro_to_db(None, "PROMO-TEFL20", 2); st.success("TEFL20 applied")
+            elif p=="TRYSUPER":
+                new_exp = datetime.now() + timedelta(days=7); save_pro_to_db(new_exp, "TRYSUPER-7DAY", 0); st.session_state.pro_expiry = new_exp; st.session_state.promo_success = True; st.success("TRYSUPER applied - 7 days")
+            elif p=="MONTH99":
+                new_exp = datetime.now() + timedelta(days=30); save_pro_to_db(new_exp, "MONTH99", 0); st.session_state.pro_expiry = new_exp; st.session_state.promo_success = True; st.success("MONTH99 applied - 1 Month for R99")
+            elif p=="WEEK99":
+                new_exp = datetime.now() + timedelta(days=7); save_pro_to_db(new_exp, "WEEK99", 0); st.session_state.pro_expiry = new_exp; st.session_state.promo_success = True; st.success("WEEK99 applied - 1 Week for R99")
+            elif p=="YEAR99":
+                new_exp = datetime.now() + timedelta(days=365); save_pro_to_db(new_exp, "YEAR99", 0); st.session_state.pro_expiry = new_exp; st.session_state.promo_success = True; st.success("YEAR99 applied - 1 Year for R99")
+            else: st.error("Invalid promo code")
     st.markdown("### 💳 Upgrade - 3 Options")
     st.markdown("#### 1️⃣ Paystack (ZAR - Instant)")
     c1,c2 = st.columns(2)
