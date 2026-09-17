@@ -632,7 +632,7 @@ with st.sidebar:
         with st.expander("⚙ Settings - Language & Standard", expanded=False):
             st.session_state.feedback_lang = st.selectbox("Feedback Language", ["English","Afrikaans","Zulu","Spanish","Portuguese","French","Arabic","Hindi","Mandarin"], index=0, key="lang_sel_v691")
             st.session_state.grading_standard = st.selectbox("Grading Standard", ["CEFR","IELTS","TOEFL","US Grade"], index=0, key="std_sel_v691")
-                   promo_in = st.text_input("Promo Code:", value="", placeholder="Enter code", key="promo_sidebar_1967")
+        promo_in = st.text_input("Promo Code:", value="", placeholder="Enter code", key="promo_sidebar_1967")
         if st.button("Apply Promo", use_container_width=True, key="promo_btn_v691"):
             p = promo_in.strip().upper()
             if p=="TEFL20":
