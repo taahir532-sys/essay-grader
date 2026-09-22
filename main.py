@@ -91,6 +91,41 @@ div[data-testid="stCameraInput"] {border:2px dashed #111; border-radius:16px; pa
 .testimonial {background:white; border-left:4px solid #111; padding:12px 16px; border-radius:8px; margin:8px 0;}
 </style>
 """, unsafe_allow_html=True)
+
+# --- MOBILE FIX ADDED - FIX WHITE TEXT ON WHITE BACKGROUND ---
+st.markdown("""
+<style>
+@media only screen and (max-width: 768px) {
+    html, body,.stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"],.main,.block-container {
+        background-color: #ffffff!important;
+    }
+    /* Force all normal text to dark on mobile */
+    p, span, div, label, h1, h2, h3, h4, h5, h6, li,.stMarkdown, [data-testid="stMarkdownContainer"] {
+        color: #111111!important;
+    }
+    /* Fix hero and cards that were white-on-white */
+   .landing-hero,.testimonial,.guide-card,.lang-card,.stTextInput,.stTextArea, [data-testid="stExpander"] {
+        background: #ffffff!important;
+        color: #111111!important;
+        border-color: #e5e5e5!important;
+    }
+   .landing-hero h2,.landing-hero p,.testimonial,.testimonial b,.guide-card h4,.guide-card p {
+        color: #111111!important;
+    }
+    /* Keep buttons and header white text on black - they are correct */
+   .tefl-header,.tefl-header div,.stButton>button, div[data-testid="stLinkButton"]>a {
+        color: white!important;
+    }
+   .tefl-header { background: linear-gradient(135deg,#111 0%,#333 100%)!important; }
+    /* Inputs need dark text */
+    input, textarea, select {
+        color: #111111!important;
+        -webkit-text-fill-color: #111111!important;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
 if "uses" not in st.session_state: st.session_state.uses = 0
 if "pro_expiry" not in st.session_state: st.session_state.pro_expiry = None
 if "active_plan" not in st.session_state: st.session_state.active_plan = None
@@ -501,7 +536,6 @@ def create_cv_pdf(cv_data):
             pdf.set_font("Arial",'B',12); pdf.set_fill_color(240,240,240); pdf.cell(0,8,section,ln=True,fill=True); pdf.ln(2)
             pdf.set_font("Arial",'',10); pdf.multi_cell(0,6,clean(content)); pdf.ln(4)
     out = pdf.output(dest='S'); return out.encode('latin-1') if isinstance(out, str) else bytes(out)
-
 def create_cover_letter_pdf(letter_text, name):
     pdf = FPDF(); pdf.set_auto_page_break(auto=True, margin=15); pdf.add_page()
     pdf.set_font("Arial",'',11); pdf.multi_cell(0,6,clean(letter_text))
