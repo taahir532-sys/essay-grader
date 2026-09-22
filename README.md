@@ -1,6 +1,6 @@
 # TEFLMate v6.91 — Class Portfolio OS
 
-AI essay grader for TEFL teachers. Photo → OCR → Grade → Portfolio. Live at 500+ teachers.
+AI essay grader for TEFL teachers. Photo → OCR → Grade → Portfolio. Live.
 
 **Live:** https://essay-grader-3atbxqeqdfpdh9huwezx57.streamlit.app/
 
