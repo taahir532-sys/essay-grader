@@ -91,41 +91,21 @@ div[data-testid="stCameraInput"] {border:2px dashed #111; border-radius:16px; pa
 .testimonial {background:white; border-left:4px solid #111; padding:12px 16px; border-radius:8px; margin:8px 0;}
 </style>
 """, unsafe_allow_html=True)
-
-# --- MOBILE FIX ADDED - FIX WHITE TEXT ON WHITE BACKGROUND ---
 st.markdown("""
 <style>
-@media only screen and (max-width: 768px) {
-    html, body,.stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"],.main,.block-container {
-        background-color: #ffffff!important;
-    }
-    /* Force all normal text to dark on mobile */
-    p, span, div, label, h1, h2, h3, h4, h5, h6, li,.stMarkdown, [data-testid="stMarkdownContainer"] {
-        color: #111111!important;
-    }
-    /* Fix hero and cards that were white-on-white */
-   .landing-hero,.testimonial,.guide-card,.lang-card,.stTextInput,.stTextArea, [data-testid="stExpander"] {
-        background: #ffffff!important;
-        color: #111111!important;
-        border-color: #e5e5e5!important;
-    }
-   .landing-hero h2,.landing-hero p,.testimonial,.testimonial b,.guide-card h4,.guide-card p {
-        color: #111111!important;
-    }
-    /* Keep buttons and header white text on black - they are correct */
-   .tefl-header,.tefl-header div,.stButton>button, div[data-testid="stLinkButton"]>a {
-        color: white!important;
-    }
-   .tefl-header { background: linear-gradient(135deg,#111 0%,#333 100%)!important; }
-    /* Inputs need dark text */
-    input, textarea, select {
-        color: #111111!important;
-        -webkit-text-fill-color: #111111!important;
-    }
+@media (max-width: 768px) {
+  [data-testid="stAppViewContainer"] { background: #ffffff!important; }
+  [data-testid="stAppViewContainer"] * { color: #000000!important; }
+ .tefl-header,.tefl-header * { color: white!important; }
+ .tefl-badge { color: #111!important; }
+  [data-testid="stSidebar"] { background: #ffffff!important; }
+  [data-testid="stSidebar"] * { color: #000000!important; }
+  input, textarea, [data-baseweb="select"] { background: white!important; color: black!important; -webkit-text-fill-color: black!important; }
+ .stButton>button, div[data-testid="stLinkButton"]>a { color: white!important; }
+ .stButton>button *, div[data-testid="stLinkButton"]>a * { color: white!important; }
 }
 </style>
 """, unsafe_allow_html=True)
-
 if "uses" not in st.session_state: st.session_state.uses = 0
 if "pro_expiry" not in st.session_state: st.session_state.pro_expiry = None
 if "active_plan" not in st.session_state: st.session_state.active_plan = None
@@ -567,18 +547,15 @@ def create_principal_pdf(excel_rows, level, avg_score, school_name="School"):
     out = pdf.output(dest='S'); return out.encode('latin-1') if isinstance(out, str) else bytes(out)
 def get_essay_hash(text, level, lang, standard):
     return hashlib.md5((text.strip()[:1000] + "|" + level + "|" + lang + "|" + standard).encode()).hexdigest()
-
 def check_supabase_cache(essay_hash):
     try:
         r = supabase.table("essay_cache").select("*").eq("hash", essay_hash).execute()
         if r.data: return r.data[0].get("result")
     except: pass
     return None
-
 def save_supabase_cache(essay_hash, result, level):
     try: supabase.table("essay_cache").insert({"hash": essay_hash, "result": result, "level": level}).execute()
     except: pass
-
 def grade_with_groq(essay_text, level):
     essay_hash = get_essay_hash(essay_text, level, st.session_state.feedback_lang, st.session_state.grading_standard)
     if essay_hash in st.session_state.grade_cache: return st.session_state.grade_cache[essay_hash]
@@ -597,49 +574,16 @@ def grade_with_groq(essay_text, level):
     prompt = f"You are kind Cambridge examiner for {level}. {std_inst}. {lang_inst}. Grade: '{essay_text[:2000]}' Return ONLY JSON keys grammar,vocabulary,coherence,task_achievement,overall,cefr,ielts,confidence,feedback_text ASCII only."
     res = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":prompt}], temperature=0, seed=42)
     result = res.choices[0].message.content; st.session_state.grade_cache[essay_hash] = result; save_supabase_cache(essay_hash, result, level); return result
-
 def save_essay_db(student_name, essay_text, level, score, cefr, feedback):
     try:
         if not st.session_state.teacher_id: return False
         supabase.table("essays").insert({"teacher_id": st.session_state.teacher_id, "student_name": student_name, "essay_text": essay_text, "level": level, "score": score, "cefr": cefr, "feedback": feedback}).execute(); return True
     except: return False
-
 def detect_ai_risk(essay_text):
     text = essay_text.lower().strip()
     if len(text) < 10: return "Too Short"
     if "delve" in text and "tapestry" in text and "leverage" in text: return "⚠ Possible AI"
     return "✅ Human"
-
-def clean(text): return unicodedata.normalize('NFKD', text or "").encode('ascii', 'ignore').decode('ascii')
-def clean_feedback_for_excel(text):
-    if not text: return ""
-    t = clean(text); t = re.sub(r'\*\*|###|##|__|\*\*', '', t); return t.strip()
-def parse_dimensions(text):
-    try:
-        j_match = re.search(r'\{.*\}', text, re.DOTALL)
-        if j_match:
-            j = json.loads(j_match.group(0))
-            return j
-    except: pass
-    return {"grammar": 5, "vocabulary": 5, "coherence": 5, "task_achievement": 5, "overall": 5, "cefr": "B1", "confidence": "medium", "feedback_text": text}
-
-def df_to_excel_bytes_safe(df, sheet_name="Sheet1"):
-    try:
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name=sheet_name)
-            ws = writer.sheets[sheet_name]
-            from openpyxl.styles import Alignment
-            for col in ws.columns:
-                max_len = 0; col_letter = col[0].column_letter
-                for cell in col:
-                    if cell.value:
-                        l = len(str(cell.value))
-                        if l > max_len: max_len = l
-                    cell.alignment = Alignment(wrap_text=True, vertical='top')
-                ws.column_dimensions[col_letter].width = min(50, max(12, max_len + 2))
-        return output.getvalue(), "xlsx"
-    except: return df.to_csv(index=False).encode('utf-8'), "csv"
 
 if st.session_state.promo_success:
     st.balloons(); st.success("🎉 Code applied - saved to DB!"); st.session_state.promo_success = False
@@ -739,11 +683,9 @@ with st.sidebar:
         st.link_button(f"Pay {st.session_state.paypal_choice} via PayPal", paypal_base, use_container_width=True)
         st.caption("After PayPal/PayShap, email proof to taahir532@gmail.com - we activate in 2h")
     st.caption("Secured by Paystack, PayShap, PayPal | v6.91")
-
     st.divider()
     st.subheader("Have a promo code?")
     promo = st.text_input("Promo Code:", value="", placeholder="Enter code", key="promo_code_800_new")
-    # codes hidden - box empty, user must type
     if promo:
         p = promo.strip().upper()
         if p == "MONTH99":
@@ -773,7 +715,6 @@ if st.session_state.get("show_admin") and is_admin():
     if st.button("Close Admin"): st.session_state.show_admin = False; st.rerun()
     st.stop()
 
-# FINAL 14 TABS - CONTRACT REMOVED AS REQUESTED
 tab_home, tab_cv, tab_cover, tab_lesson, tab_port, tab_grade, tab_photo, tab_batch, tab_single, tab_principal, tab_hod, tab_history, tab_guide, tab_super = st.tabs(["🏠 Home","📄 CV","✉️ Cover","📖 Lesson","📚 Portfolio","✍ Grade","📸 Photo","📦 Batch","👤 Single","🏫 Principal","👨‍🏫 HOD","📈 History","📊 Guide","💎 SUPER"])
 
 with tab_home:
