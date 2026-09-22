@@ -720,7 +720,7 @@ tab_home, tab_cv, tab_cover, tab_lesson, tab_port, tab_grade, tab_photo, tab_bat
 with tab_home:
     st.markdown('<div class="tefl-header"><div style="font-size:22px;font-weight:800;">📚 TEFLMate</div><div class="tefl-badge">v6.91</div></div>', unsafe_allow_html=True)
     st.markdown("""<div class="landing-hero"><h2>Everything for TEFL Teachers - One App - v6.91</h2><p>Grade 40 books in 2 mins, create CV, Cover Letter, Lesson Plans, Principal Reports & Parent Reports.</p></div>""", unsafe_allow_html=True)
-    c1,c2,c3 = st.columns(3); c1.metric("Free Grades", f"{FREE_LIMIT - st.session_state.uses} left"); c2.metric("Plan", f"{'PRO' if is_pro() else 'FREE'}"); c3.metric("Teachers", "500+ Active")
+    c1,c2,c3 = st.columns(3); c1.metric("Free Grades", f"{FREE_LIMIT - st.session_state.uses} left"); c2.metric("Plan", f"{'PRO' if is_pro() else 'FREE'}"); c3.metric("Teachers", "Beta - Early Access")
 
 with tab_cv:
     st.markdown("### 📄 TEFL CV Builder v6.91")
